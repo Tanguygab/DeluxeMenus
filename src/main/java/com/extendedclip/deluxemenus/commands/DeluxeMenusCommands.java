@@ -7,11 +7,13 @@ import com.extendedclip.deluxemenus.action.ClickActionTask;
 import com.extendedclip.deluxemenus.config.DeluxeMenusConfig;
 import com.extendedclip.deluxemenus.menu.Menu;
 import com.extendedclip.deluxemenus.menu.MenuHolder;
+import com.extendedclip.deluxemenus.persistentmeta.PersistentMetaHandler;
 import com.extendedclip.deluxemenus.utils.DumpUtils;
 import com.extendedclip.deluxemenus.utils.Messages;
 
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -23,6 +25,7 @@ import net.kyori.adventure.text.event.ClickEvent;
 import net.kyori.adventure.text.event.HoverEvent;
 import net.kyori.adventure.text.format.NamedTextColor;
 import org.bukkit.Bukkit;
+import org.bukkit.NamespacedKey;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
@@ -40,6 +43,9 @@ public class DeluxeMenusCommands implements CommandExecutor {
     private static final TextReplacementConfig.Builder AUTHORS_REPLACER_BUILDER = TextReplacementConfig.builder().matchLiteral("<authors>");
     private static final TextReplacementConfig.Builder AMOUNT_REPLACER_BUILDER = TextReplacementConfig.builder().matchLiteral("<amount>");
     private static final TextReplacementConfig.Builder MENU_REPLACER_BUILDER = TextReplacementConfig.builder().matchLiteral("<menu>");
+    private static final TextReplacementConfig.Builder META_REPLACER_BUILDER = TextReplacementConfig.builder().matchLiteral("<meta>");
+    private static final TextReplacementConfig.Builder TYPE_REPLACER_BUILDER = TextReplacementConfig.builder().matchLiteral("<type>");
+    private static final TextReplacementConfig.Builder VALUE_REPLACER_BUILDER = TextReplacementConfig.builder().matchLiteral("<value>");
 
     private final DeluxeMenus plugin;
 
@@ -462,6 +468,74 @@ public class DeluxeMenusCommands implements CommandExecutor {
             }
 
             menu.get().openMenu(viewer, null, placeholder);
+            return true;
+
+        } else if (args[0].equalsIgnoreCase("meta")) {
+
+            if (!sender.hasPermission("deluxemenus.meta")) {
+                plugin.sms(sender, Messages.NO_PERMISSION);
+                return true;
+            }
+
+
+            if (args.length < 3) {
+                plugin.sms(sender, Messages.WRONG_USAGE_META_COMMAND);
+                return true;
+            }
+
+            Player player = Bukkit.getPlayer(args[1]);
+            if (player == null) {
+                plugin.sms(
+                        sender,
+                        Messages.PLAYER_IS_NOT_ONLINE.message().replaceText(PLAYER_REPLACER_BUILDER.replacement(args[1]).build())
+                );
+                return true;
+            }
+
+
+            if (args[2].equalsIgnoreCase("list")) {
+                TextComponent.Builder message = text().append(text("Keys:", NamedTextColor.GRAY));
+
+                for (NamespacedKey key : player.getPersistentDataContainer().getKeys()) {
+                    if (key.getNamespace().equals(plugin.getName().toLowerCase(Locale.ROOT)))
+                        message.append(text("\n - " + key.getKey()));
+                }
+                plugin.sms(sender, message.build());
+                return true;
+            }
+
+            PersistentMetaHandler pmh = plugin.getPersistentMetaHandler();
+
+            if (args[2].equalsIgnoreCase("get")) {
+                if (args.length < 5) {
+                    plugin.sms(sender, Messages.WRONG_USAGE_META_COMMAND);
+                    return true;
+                }
+
+                String meta = args[3];
+                String type = args[4];
+                String value = pmh.getMeta(player, meta, type, null);
+                plugin.sms(sender, Messages.META_GET.message()
+                        .replaceText(PLAYER_REPLACER_BUILDER.replacement(player.getName()).build())
+                        .replaceText(META_REPLACER_BUILDER.replacement(meta).build())
+                        .replaceText(TYPE_REPLACER_BUILDER.replacement(type.toUpperCase(Locale.ROOT)).build())
+                        .replaceText(VALUE_REPLACER_BUILDER.replacement(String.valueOf(value)).build())
+                );
+                return true;
+            }
+
+            try {
+                boolean setSuccess = pmh.setMeta(player, String.join(" ", Arrays.copyOfRange(args, 2, args.length)));
+                if (setSuccess) {
+                    plugin.sms(sender, Messages.META_UPDATED.message().replaceText(PLAYER_REPLACER_BUILDER.replacement(player.getName()).build()));
+                    return true;
+                }
+            } catch (NumberFormatException ignored) {
+                plugin.sms(sender, Messages.INVALID_NUMBER);
+                return true;
+            }
+
+            plugin.sms(sender, Messages.WRONG_USAGE_META_COMMAND);
             return true;
 
         } else {

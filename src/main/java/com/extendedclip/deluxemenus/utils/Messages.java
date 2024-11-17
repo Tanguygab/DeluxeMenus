@@ -67,6 +67,10 @@ public enum Messages {
         .append(text("/dm dump <menu-name/config>", NamedTextColor.GRAY))),
     WRONG_USAGE_OPEN_COMMAND(WRONG_USAGE_BASE.message
         .append(text("/dm open <menu-name> [player]", NamedTextColor.GRAY))),
+    WRONG_USAGE_META_COMMAND(WRONG_USAGE_BASE.message
+            .append(text("\n/dm meta <player> <set/remove/add/subtract> <key> <type> <value>", NamedTextColor.GRAY))
+            .append(text("\n/dm meta <player> get <key> <type>", NamedTextColor.GRAY))
+            .append(text("\n/dm meta <player> list", NamedTextColor.GRAY))),
     PLAYER_IS_NOT_ONLINE(empty()
         .append(text("Player:", NamedTextColor.RED))
         .append(space())
@@ -129,7 +133,11 @@ public enum Messages {
         .append(space())
         .append(text("https://www.spigotmc.org/resources/deluxemenus.11734/", NamedTextColor.WHITE))
 
-    );
+    ),
+
+    META_GET(text("<player> has meta <meta> (<type>) set to <value>", NamedTextColor.GREEN)),
+    META_UPDATED(text("<player>'s meta updated!", NamedTextColor.GREEN)),
+    INVALID_NUMBER(text("Invalid number!", NamedTextColor.RED));
 
     Messages(final @NotNull Component message) {
         this.message = message;
