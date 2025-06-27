@@ -12,7 +12,6 @@ import java.util.*;
 import java.util.Map.Entry;
 import java.util.logging.Level;
 
-import com.extendedclip.deluxemenus.utils.VersionHelper;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryType;
