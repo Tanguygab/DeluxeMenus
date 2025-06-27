@@ -21,7 +21,6 @@ import com.extendedclip.deluxemenus.utils.Messages;
 import com.extendedclip.deluxemenus.utils.VersionHelper;
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
-import net.kyori.adventure.platform.bukkit.BukkitAudiences;
 import net.kyori.adventure.text.Component;
 import org.bstats.bukkit.Metrics;
 import org.bstats.charts.AdvancedPie;
@@ -48,8 +47,6 @@ public class DeluxeMenus extends JavaPlugin {
 
     private PersistentMetaHandler persistentMetaHandler;
     private MenuItemMarker menuItemMarker;
-
-    private BukkitAudiences audiences;
 
     private VaultHook vaultHook;
 
@@ -86,8 +83,6 @@ public class DeluxeMenus extends JavaPlugin {
         this.menuItemMarker = new MenuItemMarker(this);
         new DupeFixer(this, this.menuItemMarker).register();
 
-        this.audiences = BukkitAudiences.create(this);
-
         hookIntoVault();
         setUpItemHooks();
 
@@ -114,11 +109,6 @@ public class DeluxeMenus extends JavaPlugin {
         Bukkit.getMessenger().unregisterOutgoingPluginChannel(this, "BungeeCord");
 
         Bukkit.getScheduler().cancelTasks(this);
-
-        if (this.audiences != null) {
-            this.audiences.close();
-            this.audiences = null;
-        }
 
         Menu.unloadForShutdown(this);
 
@@ -165,7 +155,7 @@ public class DeluxeMenus extends JavaPlugin {
     }
 
     public void sms(CommandSender s, Component msg) {
-        audiences().sender(s).sendMessage(msg);
+        s.sendMessage(msg);
     }
 
     public void sms(CommandSender s, Messages msg) {
@@ -196,13 +186,6 @@ public class DeluxeMenus extends JavaPlugin {
 
     public PersistentMetaHandler getPersistentMetaHandler() {
         return persistentMetaHandler;
-    }
-
-    public BukkitAudiences audiences() {
-        if (this.audiences == null) {
-            throw new IllegalStateException("Tried to access Adventure when the plugin was disabled!");
-        }
-        return this.audiences;
     }
 
     public void clearCaches() {

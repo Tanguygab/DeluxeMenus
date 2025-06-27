@@ -17,8 +17,6 @@ annotations = "23.0.0"
 
 # Implementation
 nashorn = "15.6"
-adventure-platform = "4.4.0"
-adventure-minimessage = "4.21.0"
 
 [libraries]
 # Compile only
@@ -38,6 +36,4 @@ annotations = { module = "org.jetbrains:annotations", version.ref = "annotations
 
 # Implementation
 nashorn = { module = "org.openjdk.nashorn:nashorn-core", version.ref = "nashorn" }
-adventure-platform = { module = "net.kyori:adventure-platform-bukkit", version.ref = "adventure-platform" }
-adventure-minimessage = { module = "net.kyori:adventure-text-minimessage", version.ref = "adventure-minimessage" }
 bstats = { module = "org.bstats:bstats-bukkit", version.ref = "bstats" }
