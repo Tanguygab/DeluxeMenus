@@ -234,8 +234,7 @@ public class MenuItem {
 
         if (this.options.displayName().isPresent()) {
             final String displayName = holder.setPlaceholdersAndArguments(this.options.displayName().get());
-            if (VersionHelper.IS_PAPER) itemMeta.displayName(AdventureUtils.fromString(displayName));
-            else itemMeta.setDisplayName(StringUtils.color(displayName));
+            itemMeta.displayName(AdventureUtils.fromString(displayName));
         }
 
         setMenuItemLore(holder, this.options.lore(), itemMeta);
@@ -511,22 +510,20 @@ public class MenuItem {
 
     @SuppressWarnings("unchecked")
     protected void setMenuItemLore(@NotNull final MenuHolder holder, @NotNull final List<String> configLore, @NotNull final ItemMeta meta) {
-        List<Object> parsedConfigLore = configLore.stream()
+        List<Component> parsedConfigLore = configLore.stream()
                 .map(holder::setPlaceholdersAndArguments)
                 .map(StringUtils::color)
                 .map(line -> line.split("\n"))
                 .flatMap(Arrays::stream)
                 .map(line -> line.split("\\\\n"))
                 .flatMap(Arrays::stream)
-                .map(line -> VersionHelper.IS_PAPER
-                        ? AdventureUtils.fromString(line)
-                        : line
-                ).collect(Collectors.toList());
+                .map(AdventureUtils::fromString)
+                .collect(Collectors.toList());
 
         List<Object> lore = new ArrayList<>();
         // This checks if a lore should be kept from the hooked item, and then if a lore exists on the item
         // ItemMeta.getLore is nullable. In that case, we just create a new ArrayList so we don't add stuff to a null list.
-        List<?> itemLore = Objects.requireNonNullElse(VersionHelper.IS_PAPER ? meta.lore() : meta.getLore(), new ArrayList<>());
+        List<?> itemLore = Objects.requireNonNullElse(meta.lore(), new ArrayList<>());
         // Ensures backwards compatibility with how hooked items are currently handled
         LoreAppendMode mode = this.options.loreAppendMode().orElse(LoreAppendMode.OVERRIDE);
         if (!this.options.hasLore() && this.options.loreAppendMode().isEmpty()) mode = LoreAppendMode.IGNORE;
@@ -546,10 +543,7 @@ public class MenuItem {
                 lore.addAll(parsedConfigLore);
                 break;
         }
-        if (VersionHelper.IS_PAPER) {
-            meta.lore((List<Component>) (List<?>) lore);
-        }
-        else meta.setLore((List<String>) (List<?>) lore);
+        meta.lore((List<Component>) (List<?>) lore);
     }
 
     private @NotNull org.bukkit.inventory.meta.components.CustomModelDataComponent parseCustomModelDataComponent(

@@ -336,13 +336,9 @@ public class Menu {
             Inventory inventory;
 
             if (this.options.type() != InventoryType.CHEST) {
-                inventory = VersionHelper.IS_PAPER
-                        ? Bukkit.createInventory(holder, this.options.type(), AdventureUtils.fromString(title))
-                        : Bukkit.createInventory(holder, this.options.type(), title);
+                inventory = Bukkit.createInventory(holder, this.options.type(), AdventureUtils.fromString(title));
             } else {
-                inventory = VersionHelper.IS_PAPER
-                        ? Bukkit.createInventory(holder, this.options.size(), AdventureUtils.fromString(title))
-                        : Bukkit.createInventory(holder, this.options.size(), title);
+                inventory = Bukkit.createInventory(holder, this.options.size(), AdventureUtils.fromString(title));
             }
 
             holder.setInventory(inventory);

@@ -46,8 +46,6 @@ public final class VersionHelper {
 
     public static final int CURRENT_VERSION = getCurrentVersion();
 
-    public static final boolean IS_PAPER = checkPaper();
-
     /**
      * Checks if the current version includes the setTooltipStyle and setItemModel
      */
@@ -74,10 +72,8 @@ public final class VersionHelper {
 
     /**
      * Checks if the version supports Components or not
-     * Paper versions above 1.16.5 would be true
-     * Spigot always false
      */
-    public static final boolean IS_COMPONENT = IS_PAPER && CURRENT_VERSION >= V1_16_5;
+    public static final boolean IS_COMPONENT = CURRENT_VERSION >= V1_16_5;
 
     /**
      * Checks if the version is lower than 1.13 due to the item changes
@@ -151,21 +147,6 @@ public final class VersionHelper {
 
         VALID_INVENTORY_TYPES = validInventoryTypes;
         return VALID_INVENTORY_TYPES;
-    }
-
-    /**
-     * Check if the server has access to the Paper API
-     * Taken from <a href="https://github.com/PaperMC/PaperLib">PaperLib</a>
-     *
-     * @return True if on Paper server (or forks), false anything else
-     */
-    private static boolean checkPaper() {
-        try {
-            Class.forName("com.destroystokyo.paper.PaperConfig");
-            return true;
-        } catch (ClassNotFoundException ignored) {
-            return false;
-        }
     }
 
     /**
