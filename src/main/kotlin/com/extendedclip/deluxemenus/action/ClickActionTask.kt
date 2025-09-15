@@ -324,7 +324,8 @@ class ClickActionTask(
                 if (!executable.contains(" ")) {
                     try {
                         sound = SoundUtils.getSound(executable.uppercase())
-                            exception
+                    } catch (e: Exception) {
+                        plugin.printStacktrace("Sound name given for sound action: $executable, is not a valid sound!", e)
                         return
                     }
                 } else {
