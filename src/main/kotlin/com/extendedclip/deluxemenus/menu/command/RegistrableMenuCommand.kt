@@ -1,181 +1,154 @@
-package com.extendedclip.deluxemenus.menu.command;
+package com.extendedclip.deluxemenus.menu.command
 
-import com.extendedclip.deluxemenus.DeluxeMenus;
-import com.extendedclip.deluxemenus.menu.Menu;
-import com.extendedclip.deluxemenus.utils.DebugLevel;
-import me.clip.placeholderapi.util.Msg;
-import org.bukkit.Bukkit;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandMap;
-import org.bukkit.command.CommandSender;
-import org.bukkit.command.SimpleCommandMap;
-import org.bukkit.entity.Player;
-import org.jetbrains.annotations.NotNull;
+import com.extendedclip.deluxemenus.DeluxeMenus
+import com.extendedclip.deluxemenus.menu.Menu
+import com.extendedclip.deluxemenus.utils.DebugLevel
+import me.clip.placeholderapi.util.Msg
+import org.bukkit.Bukkit
+import org.bukkit.command.Command
+import org.bukkit.command.CommandMap
+import org.bukkit.command.CommandSender
+import org.bukkit.command.SimpleCommandMap
+import org.bukkit.entity.Player
+import java.lang.reflect.Field
+import java.util.logging.Level
 
-import java.lang.reflect.Field;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Locale;
-import java.util.Map;
-import java.util.logging.Level;
+class RegistrableMenuCommand(
+    private val plugin: DeluxeMenus,
+    var menu: Menu?
+) : Command(if (menu!!.options.commands.isEmpty()) menu.options.name else menu.options.commands.first()) {
+    private var registered = false
+    private var unregistered = false
 
-public class RegistrableMenuCommand extends Command {
-
-    private static final String FALLBACK_PREFIX = "DeluxeMenus".toLowerCase(Locale.ROOT).trim();
-    private static CommandMap commandMap = null;
-
-    private final DeluxeMenus plugin;
-
-    private Menu menu;
-    private boolean registered = false;
-    private boolean unregistered = false;
-
-    public RegistrableMenuCommand(final @NotNull DeluxeMenus plugin,
-                                  final @NotNull Menu menu) {
-        super(menu.options().commands().isEmpty() ? menu.options().name() : menu.options().commands().get(0));
-        this.plugin = plugin;
-        this.menu = menu;
-
-        if (menu.options().commands().size() > 1) {
-            this.setAliases(menu.options().commands().subList(1, menu.options().commands().size()));
+    init {
+        if (menu!!.options.commands.size > 1) {
+            setAliases(menu!!.options.commands.subList(1, menu!!.options.commands.size))
         }
     }
 
-    @Override
-    public boolean execute(final @NotNull CommandSender sender, final @NotNull String commandLabel, final @NotNull String[] typedArgs) {
-        if (this.unregistered) {
-            throw new IllegalStateException("This command was unregistered!");
+    override fun execute(sender: CommandSender, commandLabel: String, typedArgs: Array<String>): Boolean {
+        check(!unregistered) { "This command was unregistered!" }
+
+        if (sender !is Player) {
+            Msg.msg(sender, "Menus can only be opened by players!")
+            return true
         }
+        val menu = menu!!
+        var argMap: MutableMap<String, String>? = null
 
-        if (!(sender instanceof Player)) {
-            Msg.msg(sender, "Menus can only be opened by players!");
-            return true;
-        }
-
-        Map<String, String> argMap = null;
-
-        if (!menu.options().arguments().isEmpty()) {
-            plugin.debug(DebugLevel.LOWEST, Level.INFO, "has args");
-            if (typedArgs.length < menu.options().arguments().size()) {
-                if (menu.options().argumentsUsageMessage().isPresent()) {
-                    Msg.msg(sender, menu.options().argumentsUsageMessage().get());
+        if (!menu.options.arguments.isEmpty()) {
+            plugin.debug(DebugLevel.LOWEST, Level.INFO, "has args")
+            if (typedArgs.size < menu.options.arguments.size) {
+                if (menu.options.argumentsUsageMessage != null) {
+                    Msg.msg(sender, menu.options.argumentsUsageMessage!!)
                 }
-                return true;
+                return true
             }
-            argMap = new HashMap<>();
-            int index = 0;
-            for (String arg : menu.options().arguments()) {
-                if (index + 1 == menu.options().arguments().size()) {
-                    String last = String.join(" ", Arrays.asList(typedArgs).subList(index, typedArgs.length));
-                    plugin.debug(DebugLevel.LOWEST, Level.INFO, "arg: " + arg + " => " + last);
-                    argMap.put(arg, last);
+            argMap = mutableMapOf()
+            var index = 0
+            for (arg in menu.options.arguments) {
+                if (index + 1 == menu.options.arguments.size) {
+                    val last = typedArgs.slice(IntRange(index, typedArgs.size)).joinToString(" ")
+                    plugin.debug(DebugLevel.LOWEST, Level.INFO, "arg: $arg => $last")
+                    argMap[arg] = last
                 } else {
-                    argMap.put(arg, typedArgs[index]);
-                    plugin.debug(DebugLevel.LOWEST, Level.INFO, "arg: " + arg + " => " + typedArgs[index]);
+                    argMap[arg] = typedArgs[index]
+                    plugin.debug(DebugLevel.LOWEST, Level.INFO, "arg: " + arg + " => " + typedArgs[index])
                 }
-                index++;
+                index++
             }
         }
 
-        Player player = (Player) sender;
-        plugin.debug(DebugLevel.LOWEST, Level.INFO, "opening menu: " + menu.options().name());
-        menu.openMenu(player, argMap, null);
-        return true;
+        plugin.debug(DebugLevel.LOWEST, Level.INFO, "opening menu: " + menu.options.name)
+        menu.openMenu(sender, argMap, null)
+        return true
     }
 
-    public void register() {
-        if (registered) {
-            throw new IllegalStateException("This command was already registered!");
-        }
+    fun register() {
+        check(!registered) { "This command was already registered!" }
 
-        registered = true;
+        registered = true
 
         if (commandMap == null) {
             try {
-                final Field f = Bukkit.getServer().getClass().getDeclaredField("commandMap");
-                f.setAccessible(true);
-                commandMap = (CommandMap) f.get(Bukkit.getServer());
-            } catch (final @NotNull Exception exception) {
-                plugin.printStacktrace(
-                        "Something went wrong while trying to register command: " + this.getName(),
-                        exception
-                );
-                return;
+                val f = plugin.server.javaClass.getDeclaredField("commandMap")
+                f.setAccessible(true)
+                commandMap = f.get(plugin.server) as CommandMap?
+            } catch (e: Exception) {
+                plugin.printStacktrace("Something went wrong while trying to register command: $name", e)
+                return
             }
         }
 
-        boolean registered = commandMap.register(FALLBACK_PREFIX, this);
+        val registered: Boolean = commandMap!!.register(FALLBACK_PREFIX, this)
         if (registered) {
             plugin.debug(
-                    DebugLevel.LOW,
-                    Level.INFO,
-                    "Registered command: " + this.getName() + " for menu: " + menu.options().name()
-            );
+                DebugLevel.LOW,
+                Level.INFO,
+                "Registered command: $name for menu: " + menu!!.options.name
+            )
         }
     }
 
-    public void unregister() {
-        if (!registered) {
-            throw new IllegalStateException("This command was not registered!");
-        }
+    fun unregister() {
+        check(registered) { "This command was not registered!" }
 
-        if (unregistered) {
-            throw new IllegalStateException("This command was already unregistered!");
-        }
+        check(!unregistered) { "This command was already unregistered!" }
 
-        unregistered = true;
+        unregistered = true
 
         if (commandMap == null) {
-            this.menu = null;
-            return;
+            menu = null
+            return
         }
 
-        Field cMap;
-        Field knownCommands;
+        val cMap: Field?
+        val knownCommands: Field?
         try {
-            cMap = Bukkit.getServer().getClass().getDeclaredField("commandMap");
-            cMap.setAccessible(true);
-            knownCommands = SimpleCommandMap.class.getDeclaredField("knownCommands");
-            knownCommands.setAccessible(true);
+            cMap = Bukkit.getServer().javaClass.getDeclaredField("commandMap")
+            cMap.setAccessible(true)
+            knownCommands = SimpleCommandMap::class.java.getDeclaredField("knownCommands")
+            knownCommands.setAccessible(true)
 
-            final Map<String, Command> knownCommandsMap = (Map<String, Command>) knownCommands.get(cMap.get(Bukkit.getServer()));
+            val knownCommandsMap = knownCommands.get(cMap.get(Bukkit.getServer())) as MutableMap<*, *>
 
             // We need to remove every single alias because CommandMap#register() adds them all to the map.
             // If we do not remove them, then we will have dangling references to the command.
-            knownCommandsMap.remove(this.getName());
-            knownCommandsMap.remove(FALLBACK_PREFIX + ":" + this.getName());
+            knownCommandsMap.remove(name)
+            knownCommandsMap.remove("$FALLBACK_PREFIX:$name")
 
-            for (String alias : this.getAliases()) {
-                knownCommandsMap.remove(alias);
-                knownCommandsMap.remove(FALLBACK_PREFIX + ":" + alias);
+            for (alias in aliases) {
+                knownCommandsMap.remove(alias)
+                knownCommandsMap.remove("$FALLBACK_PREFIX:$alias")
             }
 
-            boolean unregistered = this.unregister((CommandMap) cMap.get(Bukkit.getServer()));
-            this.unregister(commandMap);
+            val unregistered = unregister((cMap.get(Bukkit.getServer()) as CommandMap?)!!)
+            unregister(commandMap!!)
             if (unregistered) {
                 plugin.debug(
-                        DebugLevel.HIGH,
-                        Level.INFO,
-                        "Successfully unregistered command: " + this.getName()
-                );
+                    DebugLevel.HIGH,
+                    Level.INFO,
+                    "Successfully unregistered command: $name"
+                )
             } else {
                 plugin.debug(
-                        DebugLevel.HIGHEST,
-                        Level.WARNING,
-                        "Failed to unregister command: " + this.getName()
-                );
+                    DebugLevel.HIGHEST,
+                    Level.WARNING,
+                    "Failed to unregister command: $name"
+                )
             }
-        } catch (final @NotNull Exception exception) {
+        } catch (exception: Exception) {
             plugin.printStacktrace(
-                    "Something went wrong while trying to unregister command: " + this.getName(),
-                    exception
-            );
+                "Something went wrong while trying to unregister command: $name",
+                exception
+            )
         }
 
-        this.menu = null;
+        menu = null
     }
 
-    public boolean registered() {
-        return registered;
+    companion object {
+        private val FALLBACK_PREFIX = "DeluxeMenus".lowercase()
+        private var commandMap: CommandMap? = null
     }
 }

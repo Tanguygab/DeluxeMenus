@@ -5,6 +5,8 @@ version: ${version}
 authors: [ HelpChat ]
 softdepend: [ PlaceholderAPI, Vault, HeadDatabase, ItemsAdder, Nexo, Oraxen, ExecutableItems, ExecutableBlocks, Score, SimpleItemGenerator, MMOItems ]
 description: All in one inventory menu system
+libraries:
+  - org.jetbrains.kotlin:kotlin-stdlib-jdk8:2.2.20-RC2
 commands:
   deluxemenus:
     description: DeluxeMenus main commands

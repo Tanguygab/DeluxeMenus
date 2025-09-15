@@ -1,29 +1,22 @@
-package com.extendedclip.deluxemenus.utils;
+package com.extendedclip.deluxemenus.utils
 
-import com.extendedclip.deluxemenus.DeluxeMenus;
-import com.google.gson.Gson;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.mojang.authlib.GameProfile;
-import com.mojang.authlib.properties.Property;
-import org.bukkit.Bukkit;
-import org.bukkit.OfflinePlayer;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.SkullMeta;
-import org.bukkit.profile.PlayerProfile;
-import org.bukkit.profile.PlayerTextures;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import com.extendedclip.deluxemenus.DeluxeMenus
+import com.google.gson.Gson
+import com.google.gson.JsonObject
+import com.mojang.authlib.GameProfile
+import com.mojang.authlib.properties.Property
+import org.bukkit.Bukkit
+import org.bukkit.inventory.ItemStack
+import org.bukkit.inventory.meta.SkullMeta
+import org.bukkit.profile.PlayerProfile
+import java.lang.reflect.Field
+import java.net.MalformedURLException
+import java.net.URI
+import java.util.Base64
+import java.util.UUID
 
-import java.lang.reflect.Field;
-import java.net.MalformedURLException;
-import java.net.URL;
-import java.util.Base64;
-import java.util.UUID;
-
-public class SkullUtils {
-
-    private static final Gson GSON = new Gson();
+object SkullUtils {
+    private val GSON = Gson()
 
     /**
      * Helper method to get the encoded bytes for a full MC Texture
@@ -31,13 +24,7 @@ public class SkullUtils {
      * @param url the url of the texture
      * @return fully encoded texture url
      */
-    @NotNull
-    public static String getEncoded(@NotNull final String url) {
-        final byte[] encodedData = Base64.getEncoder().encode(String
-                .format("{textures:{SKIN:{url:\"%s\"}}}", "https://textures.minecraft.net/texture/" + url)
-                .getBytes());
-        return new String(encodedData);
-    }
+    fun getEncoded(url: String) = String(Base64.getEncoder().encode("{textures:{SKIN:{url:\"https://textures.minecraft.net/texture/$url\"}}}".toByteArray()))
 
     /**
      * Get the skull from a base64 encoded texture url
@@ -45,74 +32,60 @@ public class SkullUtils {
      * @param base64Url base64 encoded url to use
      * @return skull
      */
-    @NotNull
-    public static ItemStack getSkullByBase64EncodedTextureUrl(@NotNull final DeluxeMenus plugin, @NotNull final String base64Url) {
-        final ItemStack head = plugin.getHead().clone();
+    fun getSkullByBase64EncodedTextureUrl(plugin: DeluxeMenus, base64Url: String): ItemStack {
+        val head = plugin.head.clone()
         if (base64Url.isEmpty()) {
-            return head;
+            return head
         }
 
-        final SkullMeta headMeta = (SkullMeta) head.getItemMeta();
-        if (headMeta == null) {
-            return head;
-        }
+        val headMeta = head.itemMeta as SkullMeta? ?: return head
 
         if (VersionHelper.HAS_PLAYER_PROFILES) {
-            final PlayerProfile profile = getPlayerProfile(plugin, base64Url);
-            headMeta.setOwnerProfile(profile);
-            head.setItemMeta(headMeta);
-            return head;
+            val profile = getPlayerProfile(plugin, base64Url)
+            headMeta.ownerProfile = profile
+            head.itemMeta = headMeta
+            return head
         }
 
-        final GameProfile profile = getGameProfile(base64Url);
-        final Field profileField;
+        val profile = getGameProfile(base64Url)
+        val profileField: Field
         try {
-            profileField = headMeta.getClass().getDeclaredField("profile");
-            profileField.setAccessible(true);
-            profileField.set(headMeta, profile);
-        } catch (final NoSuchFieldException | IllegalArgumentException | IllegalAccessException exception) {
-            plugin.printStacktrace(
-                    "Failed to get head item from base64 texture url",
-                    exception
-            );
+            profileField = headMeta.javaClass.getDeclaredField("profile")
+            profileField.setAccessible(true)
+            profileField.set(headMeta, profile)
+        } catch (e: Exception) {
+            plugin.printStacktrace("Failed to get head item from base64 texture url", e)
         }
-        head.setItemMeta(headMeta);
-        return head;
+        head.itemMeta = headMeta
+        return head
     }
 
-    public static String getTextureFromSkull(final DeluxeMenus plugin, ItemStack item) {
-        if (!(item.getItemMeta() instanceof SkullMeta)) return null;
-        SkullMeta meta = (SkullMeta) item.getItemMeta();
+    fun getTextureFromSkull(plugin: DeluxeMenus, item: ItemStack): String? {
+        if (item.itemMeta !is SkullMeta) return null
+        val meta = item.itemMeta as SkullMeta
 
         if (VersionHelper.HAS_PLAYER_PROFILES) {
-            PlayerProfile profile = meta.getOwnerProfile();
-            if (profile == null) return null;
-
-            URL url = profile.getTextures().getSkin();
-            if (url == null) return null;
-
-            return url.toString().substring("https://textures.minecraft.net/texture/".length() - 1);
+            val profile = meta.ownerProfile ?: return null
+            val url = profile.textures.skin ?: return null
+            return url.toString().substring("https://textures.minecraft.net/texture/".length - 1)
         }
 
-        GameProfile profile;
+        val profile: GameProfile
         try {
-            final Field profileField = meta.getClass().getDeclaredField("profile");
-            profileField.setAccessible(true);
-            profile = (GameProfile) profileField.get(meta);
-        } catch (final NoSuchFieldException | IllegalArgumentException | IllegalAccessException exception) {
-            plugin.printStacktrace(
-                    "Failed to get base64 texture url from head item",
-                    exception
-            );
-            return null;
+            val profileField = meta.javaClass.getDeclaredField("profile")
+            profileField.setAccessible(true)
+            profile = profileField.get(meta) as GameProfile
+        } catch (e: NoSuchFieldException) {
+            plugin.printStacktrace("Failed to get base64 texture url from head item", e)
+            return null
         }
 
-        for (Property property : profile.getProperties().get("textures")) {
-            if (property.getName().equals("textures")) {
-                return decodeSkinUrl(property.getValue());
+        for (property in profile.properties.get("textures")) {
+            if (property.name == "textures") {
+                return decodeSkinUrl(property.value)
             }
         }
-        return null;
+        return null
     }
 
 
@@ -122,43 +95,39 @@ public class SkullUtils {
      * @param playerName the player name to use
      * @return skull
      */
-    @NotNull
-    public static ItemStack getSkullByName(@NotNull final DeluxeMenus plugin, @NotNull final String playerName) {
-        final ItemStack head = plugin.getHead().clone();
-        if (playerName.isEmpty()) {
-            return head;
-        }
+    @Suppress("DEPRECATION")
+    fun getSkullByName(plugin: DeluxeMenus, playerName: String): ItemStack {
+        val head = plugin.head.clone()
+        if (playerName.isEmpty()) return head
 
-        final SkullMeta headMeta = (SkullMeta) head.getItemMeta();
-        if (headMeta == null) {
-            return head;
-        }
+        val headMeta = head.itemMeta as SkullMeta? ?: return head
 
-        final OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(playerName);
+        val offlinePlayer = Bukkit.getOfflinePlayer(playerName)
 
-        if (VersionHelper.HAS_PLAYER_PROFILES && offlinePlayer.getPlayerProfile().getTextures().isEmpty()) {
+        if (VersionHelper.HAS_PLAYER_PROFILES && offlinePlayer.playerProfile.textures.isEmpty) {
             // updates the Player Profile and populates textures for offline players - for some reason this doesn't populate when getting the Profile first time
-            headMeta.setOwnerProfile(offlinePlayer.getPlayerProfile().update().join());
+            headMeta.ownerProfile = offlinePlayer.playerProfile.update().join()
         } else if (!VersionHelper.IS_SKULL_OWNER_LEGACY) {
-            headMeta.setOwningPlayer(offlinePlayer);
+            headMeta.owningPlayer = offlinePlayer
         } else {
-            headMeta.setOwner(offlinePlayer.getName());
+            headMeta.owner = offlinePlayer.name
         }
 
-        head.setItemMeta(headMeta);
-        return head;
+        head.itemMeta = headMeta
+        return head
     }
 
-    public static String getSkullOwner(ItemStack skull) {
-        if (skull == null || !(skull.getItemMeta() instanceof SkullMeta)) return null;
-        SkullMeta meta = (SkullMeta) skull.getItemMeta();
+    fun getSkullOwner(skull: ItemStack?): String? {
+        if (skull == null || skull.itemMeta !is SkullMeta) return null
+        val meta = skull.itemMeta as SkullMeta
 
         if (!VersionHelper.IS_SKULL_OWNER_LEGACY) {
-            if (meta.getOwningPlayer() == null) return null;
-            return meta.getOwningPlayer().getName();
+            if (meta.owningPlayer == null) return null
+            return meta.owningPlayer!!.name
         }
 
-        return meta.getOwner();
+        @Suppress("DEPRECATION")
+        return meta.owner
     }
 
     /**
@@ -167,11 +136,10 @@ public class SkullUtils {
      * @param base64Url the base64 encoded texture url to use
      * @return game profile
      */
-    @NotNull
-    private static GameProfile getGameProfile(@NotNull final String base64Url) {
-        GameProfile profile = new GameProfile(UUID.randomUUID(), "");
-        profile.getProperties().put("textures", new Property("textures", base64Url));
-        return profile;
+    private fun getGameProfile(base64Url: String): GameProfile {
+        val profile = GameProfile(UUID.randomUUID(), "")
+        profile.properties.put("textures", Property("textures", base64Url))
+        return profile
     }
 
     /**
@@ -181,59 +149,44 @@ public class SkullUtils {
      * @param base64Url the base64 encoded texture URL to use
      * @return player profile
      */
-    @NotNull
-    private static PlayerProfile getPlayerProfile(@NotNull final DeluxeMenus plugin, @NotNull final String base64Url) {
-        final PlayerProfile profile = Bukkit.createPlayerProfile(UUID.randomUUID());
+    private fun getPlayerProfile(plugin: DeluxeMenus, base64Url: String): PlayerProfile {
+        val profile = Bukkit.createPlayerProfile(UUID.randomUUID())
 
-        final String decodedBase64 = decodeSkinUrl(base64Url);
-        if (decodedBase64 == null) {
-            return profile;
-        }
+        val decodedBase64 = decodeSkinUrl(base64Url) ?: return profile
 
-        final PlayerTextures textures = profile.getTextures();
+        val textures = profile.textures
 
         try {
-            textures.setSkin(new URL(decodedBase64));
-        } catch (final MalformedURLException exception) {
-            plugin.printStacktrace("Something went horribly wrong trying to create basehead URL", exception);
+            textures.skin = URI.create(decodedBase64).toURL()
+        } catch (e: MalformedURLException) {
+            plugin.printStacktrace("Something went horribly wrong trying to create basehead URL", e)
         }
 
-        profile.setTextures(textures);
-        return profile;
+        profile.setTextures(textures)
+        return profile
     }
 
     /**
      * Decode a base64 string and extract the url of the skin. Example:
-     * <br>
-     * - Base64: {@code eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZGNlYjE3MDhkNTQwNGVmMzI2MTAzZTdiNjA1NTljOTE3OGYzZGNlNzI5MDA3YWM5YTBiNDk4YmRlYmU0NjEwNyJ9fX0=}
-     * <br>
-     * - JSON: {@code {"textures":{"SKIN":{"url":"http://textures.minecraft.net/texture/dceb1708d5404ef326103e7b60559c9178f3dce729007ac9a0b498bdebe46107"}}}}
-     * <br>
-     * - Result: {@code http://textures.minecraft.net/texture/dceb1708d5404ef326103e7b60559c9178f3dce729007ac9a0b498bdebe46107}
-     * <br>
-     * Credit: <a href="https://github.com/TriumphTeam/triumph-gui/pull/104/files#diff-ef6f3ffdac8e5f722e2e9121be8003b26d087c2d7871ca43d31b65c7565b0c1fR92">iGabyTM</a>
+     * <br></br>
+     * - Base64: `eyJ0ZXh0dXJlcyI6eyJTS0lOIjp7InVybCI6Imh0dHA6Ly90ZXh0dXJlcy5taW5lY3JhZnQubmV0L3RleHR1cmUvZGNlYjE3MDhkNTQwNGVmMzI2MTAzZTdiNjA1NTljOTE3OGYzZGNlNzI5MDA3YWM5YTBiNDk4YmRlYmU0NjEwNyJ9fX0=`
+     * <br></br>
+     * - JSON: `{"textures":{"SKIN":{"url":"http://textures.minecraft.net/texture/dceb1708d5404ef326103e7b60559c9178f3dce729007ac9a0b498bdebe46107"}}}`
+     * <br></br>
+     * - Result: `http://textures.minecraft.net/texture/dceb1708d5404ef326103e7b60559c9178f3dce729007ac9a0b498bdebe46107`
+     * <br></br>
+     * Credit: [iGabyTM](https://github.com/TriumphTeam/triumph-gui/pull/104/files#diff-ef6f3ffdac8e5f722e2e9121be8003b26d087c2d7871ca43d31b65c7565b0c1fR92)
      *
      * @param base64Texture the texture
-     * @return the url of the texture if found, otherwise {@code null}
+     * @return the url of the texture if found, otherwise `null`
      */
-    @Nullable
-    public static String decodeSkinUrl(@NotNull final String base64Texture) {
-        final String decoded = new String(Base64.getDecoder().decode(base64Texture));
-        final JsonObject object = GSON.fromJson(decoded, JsonObject.class);
+    fun decodeSkinUrl(base64Texture: String): String? {
+        val decoded = String(Base64.getDecoder().decode(base64Texture))
+        val obj = GSON.fromJson(decoded, JsonObject::class.java)
 
-        final JsonElement textures = object.get("textures");
-
-        if (textures == null) {
-            return null;
-        }
-
-        final JsonElement skin = textures.getAsJsonObject().get("SKIN");
-
-        if (skin == null) {
-            return null;
-        }
-
-        final JsonElement url = skin.getAsJsonObject().get("url");
-        return url == null ? null : url.getAsString();
+        val textures = obj.get("textures") ?: return null
+        val skin = textures.getAsJsonObject().get("SKIN") ?: return null
+        val url = skin.getAsJsonObject().get("url")
+        return url?.asString
     }
 }

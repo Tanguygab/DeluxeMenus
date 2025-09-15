@@ -1,43 +1,30 @@
-package com.extendedclip.deluxemenus.utils;
+package com.extendedclip.deluxemenus.utils
 
-import org.bukkit.Material;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ArmorMeta;
-import org.bukkit.inventory.meta.PotionMeta;
-import org.bukkit.potion.PotionType;
-import org.jetbrains.annotations.NotNull;
+import org.bukkit.Material
+import org.bukkit.inventory.ItemStack
+import org.bukkit.inventory.meta.ArmorMeta
+import org.bukkit.inventory.meta.PotionMeta
+import org.bukkit.potion.PotionType
 
-import java.util.Locale;
-
-import static com.extendedclip.deluxemenus.utils.Constants.INVENTORY_ITEM_ACCESSORS;
-import static com.extendedclip.deluxemenus.utils.Constants.PLACEHOLDER_PREFIX;
-import static com.extendedclip.deluxemenus.utils.Constants.STACK_PREFIX;
-import static com.extendedclip.deluxemenus.utils.Constants.WATER_BOTTLE;
-
-public final class ItemUtils {
-
-    private ItemUtils() {
-        throw new UnsupportedOperationException("This is a utility class and cannot be instantiated");
-    }
-
+object ItemUtils {
     /**
      * Checks if the string starts with the substring "placeholder-". The check is case-insensitive.
      *
      * @param material The string to check
      * @return true if the string starts with "placeholder-", false otherwise
      */
-    public static boolean isPlaceholderOption(@NotNull final String material) {
-        return material.toLowerCase(Locale.ROOT).startsWith(PLACEHOLDER_PREFIX);
+    fun isPlaceholderOption(material: String): Boolean {
+        return material.lowercase().startsWith(Constants.PLACEHOLDER_PREFIX)
     }
 
     /**
      * Checks if the string starts with the substring "stack-". The check is case-insensitive.
      *
-     * @param itemstack The string to check
+     * @param material The string to check
      * @return true if the string starts with "stack-", false otherwise
      */
-    public static boolean isItemStackOption(@NotNull final String material) {
-        return material.toLowerCase(Locale.ROOT).startsWith(STACK_PREFIX);
+    fun isItemStackOption(material: String): Boolean {
+        return material.lowercase().startsWith(Constants.STACK_PREFIX)
     }
 
     /**
@@ -47,8 +34,8 @@ public final class ItemUtils {
      * @param material The string to check
      * @return true if the string is a player item, false otherwise
      */
-    public static boolean isPlayerItem(@NotNull final String material) {
-        return INVENTORY_ITEM_ACCESSORS.containsKey(material);
+    fun isPlayerItem(material: String): Boolean {
+        return Constants.INVENTORY_ITEM_ACCESSORS.containsKey(material)
     }
 
     /**
@@ -57,8 +44,8 @@ public final class ItemUtils {
      * @param material The material to check
      * @return true if the material is a water bottle, false otherwise
      */
-    public static boolean isWaterBottle(@NotNull final String material) {
-        return material.equalsIgnoreCase(WATER_BOTTLE);
+    fun isWaterBottle(material: String): Boolean {
+        return material.equals(Constants.WATER_BOTTLE, ignoreCase = true)
     }
 
     /**
@@ -67,8 +54,8 @@ public final class ItemUtils {
      * @param material The material to check
      * @return true if the material is a banner, false otherwise
      */
-    public static boolean isBanner(@NotNull final Material material) {
-        return material.name().endsWith("_BANNER");
+    fun isBanner(material: Material): Boolean {
+        return material.name.endsWith("_BANNER")
     }
 
     /**
@@ -77,13 +64,11 @@ public final class ItemUtils {
      * @param material The material to check
      * @return true if the material is a shield, false otherwise
      */
-    public static boolean isShield(@NotNull final Material material) {
-        return material == Material.SHIELD;
+    fun isShield(material: Material): Boolean {
+        return material == Material.SHIELD
     }
 
-    public static boolean hasArmorMeta(@NotNull final ItemStack itemStack) {
-        return itemStack.getItemMeta() instanceof ArmorMeta;
-    }
+    fun hasArmorMeta(itemStack: ItemStack) = itemStack.itemMeta is ArmorMeta
 
     /**
      * Checks if the ItemStack is a potion or can hold potion effects.
@@ -91,24 +76,22 @@ public final class ItemUtils {
      * @param itemStack The ItemStack to check
      * @return true if the ItemStack is a potion or can hold a potion effect, false otherwise
      */
-    public static boolean hasPotionMeta(@NotNull final ItemStack itemStack) {
-        return itemStack.getItemMeta() instanceof PotionMeta;
-    }
+    fun hasPotionMeta(itemStack: ItemStack) = itemStack.itemMeta is PotionMeta
 
     /**
      * Creates water bottles stack
      * @param amount the amount of water bottles to put in the stack
      * @return the water bottles stack
      */
-    public static @NotNull ItemStack createWaterBottles(final int amount) {
-        final ItemStack itemStack = new ItemStack(Material.POTION, amount);
-        final PotionMeta itemMeta = (PotionMeta) itemStack.getItemMeta();
+    fun createWaterBottles(amount: Int): ItemStack {
+        val itemStack = ItemStack(Material.POTION, amount)
+        val itemMeta = itemStack.itemMeta
 
-        if (itemMeta != null) {
-            itemMeta.setBasePotionType(PotionType.WATER);
-            itemStack.setItemMeta(itemMeta);
+        if (itemMeta is PotionMeta) {
+            itemMeta.basePotionType = PotionType.WATER
+            itemStack.itemMeta = itemMeta
         }
 
-        return itemStack;
+        return itemStack
     }
 }

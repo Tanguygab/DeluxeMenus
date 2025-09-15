@@ -1,373 +1,205 @@
-package com.extendedclip.deluxemenus.menu;
+package com.extendedclip.deluxemenus.menu
 
-import com.extendedclip.deluxemenus.DeluxeMenus;
-import com.extendedclip.deluxemenus.menu.options.MenuOptions;
-import com.extendedclip.deluxemenus.utils.StringUtils;
-import org.bukkit.Bukkit;
-import org.bukkit.entity.Player;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.InventoryHolder;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.scheduler.BukkitTask;
-import org.jetbrains.annotations.NotNull;
+import com.extendedclip.deluxemenus.DeluxeMenus
+import com.extendedclip.deluxemenus.utils.StringUtils
+import org.bukkit.entity.Player
+import org.bukkit.inventory.Inventory
+import org.bukkit.inventory.InventoryHolder
+import org.bukkit.scheduler.BukkitRunnable
+import org.bukkit.scheduler.BukkitTask
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.TreeMap;
+class MenuHolder : InventoryHolder {
+    val plugin: DeluxeMenus
+    val viewer: Player
 
-public class MenuHolder implements InventoryHolder {
+    var placeholderPlayer: Player? = null
+    var menuName: String? = null
+    var activeItems: Set<MenuItem>? = null
+    var inv: Inventory? = null
 
-    private final DeluxeMenus plugin;
-    private final Player viewer;
+    private var updateTask: BukkitTask? = null
+    private var refreshTask: BukkitTask? = null
 
-    private Player placeholderPlayer;
-    private String menuName;
-    private Set<MenuItem> activeItems;
-    private BukkitTask updateTask = null;
-    private BukkitTask refreshTask = null;
-    private Inventory inventory;
-    private boolean updating;
-    private boolean parsePlaceholdersInArguments;
-    private boolean parsePlaceholdersAfterArguments;
-    private Map<String, String> typedArgs;
+    var isUpdating: Boolean = false
+    var parsePlaceholdersInArguments = false
+    var parsePlaceholdersAfterArguments = false
+    var typedArgs: MutableMap<String, String>? = null
 
-    public MenuHolder(final @NotNull DeluxeMenus plugin, final @NotNull Player viewer) {
-        this.plugin = plugin;
-        this.viewer = viewer;
+    constructor(plugin: DeluxeMenus, viewer: Player) {
+        this.plugin = plugin
+        this.viewer = viewer
     }
 
-    public MenuHolder(final @NotNull DeluxeMenus plugin, final @NotNull Player viewer, final @NotNull String menuName,
-                      final @NotNull Set<@NotNull MenuItem> activeItems, final @NotNull Inventory inventory) {
-        this.plugin = plugin;
-        this.viewer = viewer;
-        this.menuName = menuName;
-        this.activeItems = activeItems;
-        this.inventory = inventory;
+    override fun getInventory() = inv!!
+
+    fun getViewerName() = viewer.name
+
+    fun getItem(slot: Int) = activeItems?.find { it.options.slot == slot }
+
+    fun getMenu() = Menu.getMenuByName(menuName!!)
+
+    fun setPlaceholdersAndArguments(string: String): String {
+        return if (parsePlaceholdersAfterArguments)  setPlaceholders(setArguments(string))
+        else setArguments(setPlaceholders(string))
     }
 
-    public String getViewerName() {
-        return viewer.getName();
+    fun setPlaceholders(string: String): String {
+        val player = if (placeholderPlayer != null) placeholderPlayer else viewer
+        return if (player == null) string
+        else StringUtils.replacePlaceholders(string, player)
     }
 
-    public BukkitTask getUpdateTask() {
-        return updateTask;
-    }
-
-    public Player getViewer() {
-        return viewer;
-    }
-
-    public String getMenuName() {
-        return menuName;
-    }
-
-    public void setMenuName(String menuName) {
-        this.menuName = menuName;
-    }
-
-    public Set<MenuItem> getActiveItems() {
-        return activeItems;
-    }
-
-    public void setActiveItems(Set<MenuItem> items) {
-        this.activeItems = items;
-    }
-
-    public MenuHolder getHolder() {
-        return this;
-    }
-
-    public MenuItem getItem(int slot) {
-        for (MenuItem item : activeItems) {
-            if (item.options().slot() == slot) {
-                return item;
-            }
-        }
-        return null;
-    }
-
-    public Optional<Menu> getMenu() {
-        return Menu.getMenuByName(menuName);
-    }
-
-    public @NotNull String setPlaceholdersAndArguments(final @NotNull String string) {
-        if (parsePlaceholdersAfterArguments) {
-            return setPlaceholders(setArguments(string));
-        }
-        return setArguments(setPlaceholders(string));
-    }
-
-    public @NotNull String setPlaceholders(final @NotNull String string) {
-        final Player player = this.placeholderPlayer != null ? this.placeholderPlayer : this.getViewer();
-        if (player == null) {
-            return string;
-        }
-
-        return StringUtils.replacePlaceholders(string, player);
-    }
-
-    public @NotNull String setArguments(final @NotNull String string) {
-        final Player player = this.placeholderPlayer != null ? this.placeholderPlayer : this.getViewer();
+    fun setArguments(string: String): String {
+        val player = if (placeholderPlayer != null) placeholderPlayer else viewer
 
         return StringUtils.replaceArguments(
-                string,
-                this.typedArgs,
-                player,
-                this.parsePlaceholdersInArguments
-        );
+            string,
+            typedArgs,
+            player,
+            parsePlaceholdersInArguments
+        )
     }
 
-    public void refreshMenu() {
+    fun refreshMenu() {
+        val menu = getMenu() ?: return
 
-        Optional<Menu> optionalMenu = getMenu();
-        if (optionalMenu.isEmpty()) {
-            return;
-        }
+        if (menu.items.isEmpty()) return
 
-        Menu menu = optionalMenu.get();
+        isUpdating = true
+        val inventory = inv!!
 
-        if (menu.getMenuItems().isEmpty()) {
-            return;
-        }
-
-        setUpdating(true);
-
-        Bukkit.getScheduler().runTaskAsynchronously(this.plugin, () -> {
-
-            final Set<MenuItem> active = new HashSet<>();
-
-            for (int i = 0; i < getInventory().getSize(); i++) {
-                TreeMap<Integer, MenuItem> e = menu.getMenuItems().get(i);
+        plugin.server.scheduler.runTaskAsynchronously(plugin, Runnable {
+            val active = mutableSetOf<MenuItem>()
+            for (i in 0..<inventory.size) {
+                val e = menu.items[i]
 
                 if (e == null) {
-                    getInventory().setItem(i, null);
-                    continue;
+                    inventory.setItem(i, null)
+                    continue
                 }
 
-                boolean m = false;
-                for (MenuItem item : e.values()) {
-
-                    if (item.options().viewRequirements().isPresent()) {
-
-                        if (item.options().viewRequirements().get().evaluate(this)) {
-                            m = true;
-                            active.add(item);
-                            break;
+                var m = false
+                for (item in e.values) {
+                    if (item.options.viewRequirements != null) {
+                        if (item.options.viewRequirements.evaluate(this)) {
+                            m = true
+                            active.add(item)
+                            break
                         }
                     } else {
-                        m = true;
-                        active.add(item);
-                        break;
+                        m = true
+                        active.add(item)
+                        break
                     }
                 }
 
                 if (!m) {
-                    getInventory().setItem(i, null);
+                    inventory.setItem(i, null)
                 }
             }
 
             if (active.isEmpty()) {
-                Menu.closeMenu(plugin, getViewer(), true);
+                Menu.closeMenu(plugin, viewer, true)
             }
+            plugin.server.scheduler.runTask(plugin, Runnable {
+                var update = false
+                for (item in active) {
+                    val iStack = item.getItemStack(this)
 
-            Bukkit.getScheduler().runTask(plugin, () -> {
+                    val slot: Int = item.options.slot
 
-                boolean update = false;
-
-                for (MenuItem item : active) {
-
-                    ItemStack iStack = item.getItemStack(this);
-
-                    int slot = item.options().slot();
-
-                    if (slot >= menu.options().size()) {
-                        continue;
+                    if (slot >= menu.options.size) {
+                        continue
                     }
 
-                    if (item.options().updatePlaceholders()) {
-                        update = true;
+                    if (item.options.updatePlaceholders) {
+                        update = true
                     }
 
-                    getInventory().setItem(item.options().slot(), iStack);
+                    inventory.setItem(item.options.slot, iStack)
                 }
 
-                setActiveItems(active);
+                activeItems = active
 
                 if (update && updateTask == null) {
-                    startUpdatePlaceholdersTask();
-                } else if(!update && updateTask != null) {
-                    stopPlaceholderUpdate();
+                    startUpdatePlaceholdersTask()
+                } else if (!update && updateTask != null) {
+                    stopPlaceholderUpdate()
                 }
-
-                setUpdating(false);
-            });
-        });
+                isUpdating = false
+            })
+        })
     }
 
-    public void stopPlaceholderUpdate() {
+    fun stopPlaceholderUpdate() {
+        try { updateTask?.cancel() }
+        catch (_: Exception) {}
+        updateTask = null
+    }
+
+    fun stopRefreshTask() {
+        try { refreshTask?.cancel() }
+        catch (_: Exception) {}
+        refreshTask = null
+    }
+
+    fun startRefreshTask() {
+        if (refreshTask != null) stopRefreshTask()
+
+        refreshTask = object : BukkitRunnable() {
+            override fun run() = refreshMenu()
+        }.runTaskTimerAsynchronously(plugin, 20L,20L * (Menu.getMenuByName(menuName!!)?.options?.refreshInterval ?: 10))
+    }
+
+    fun startUpdatePlaceholdersTask() {
         if (updateTask != null) {
-            try {
-                updateTask.cancel();
-            } catch (Exception ignored) {
-            }
-            updateTask = null;
-        }
-    }
-
-    public void stopRefreshTask() {
-        if(refreshTask != null) {
-            try {
-                refreshTask.cancel();
-            } catch (Exception ignored) {
-            }
-            refreshTask = null;
-        }
-    }
-
-    public void startRefreshTask() {
-        if(refreshTask != null) {
-            stopRefreshTask();
+            stopPlaceholderUpdate()
         }
 
-        refreshTask = new BukkitRunnable() {
-            @Override
-            public void run() {
-                refreshMenu();
-            }
-        }.runTaskTimerAsynchronously(plugin, 20L,
-                20L * Menu.getMenuByName(menuName)
-                        .map(Menu::options)
-                        .map(MenuOptions::refreshInterval)
-                        .orElse(10));
-    }
+        updateTask = object : BukkitRunnable() {
+            override fun run() {
+                if (isUpdating) return
 
-    public void startUpdatePlaceholdersTask() {
+                val items = activeItems ?: return
 
-        if (updateTask != null) {
-            stopPlaceholderUpdate();
-        }
+                for (item in items) {
+                    if (item.options.updatePlaceholders) {
+                        val i = inv!!.getItem(item.options.slot) ?: continue
 
-        updateTask = new BukkitRunnable() {
+                        var amt = i.amount
 
-            @Override
-            public void run() {
-
-                if (updating) {
-                    return;
-                }
-
-                Set<MenuItem> items = getActiveItems();
-
-                if (items == null) {
-                    return;
-                }
-
-                for (MenuItem item : items) {
-
-                    if (item.options().updatePlaceholders()) {
-
-                        ItemStack i = inventory.getItem(item.options().slot());
-
-                        if (i == null) {
-                            continue;
-                        }
-
-                        int amt = i.getAmount();
-
-                        if (item.options().dynamicAmount().isPresent()) {
+                        if (item.options.dynamicAmount != null) {
                             try {
-                                amt = Integer.parseInt(setPlaceholdersAndArguments(item.options().dynamicAmount().get()));
+                                amt = setPlaceholdersAndArguments(item.options.dynamicAmount).toInt()
                                 if (amt <= 0) {
-                                    amt = 1;
+                                    amt = 1
                                 }
-                            } catch (Exception exception) {
+                            } catch (e: Exception) {
                                 plugin.printStacktrace(
-                                        "Something went wrong while updating item in slot " + item.options().slot() +
-                                                ". Invalid dynamic amount: " + setPlaceholdersAndArguments(item.options().dynamicAmount().get()),
-                                        exception
-                                );
+                                    "Something went wrong while updating item in slot " + item.options.slot +
+                                            ". Invalid dynamic amount: " + setPlaceholdersAndArguments(
+                                        item.options.dynamicAmount
+                                    ),
+                                    e
+                                )
                             }
                         }
 
-                        ItemMeta meta = i.getItemMeta();
+                        val meta = i.itemMeta!!
 
-                        if (item.options().displayNameHasPlaceholders() && item.options().displayName().isPresent()) {
-                            meta.setDisplayName(StringUtils.color(setPlaceholdersAndArguments(item.options().displayName().get())));
+                        if (item.options.displayNameHasPlaceholders && item.options.displayName != null) {
+                            meta.setDisplayName(StringUtils.color(setPlaceholdersAndArguments(item.options.displayName)))
                         }
 
-                        if (item.options().loreHasPlaceholders()) {
-                            meta.setLore(item.getMenuItemLore(getHolder(), item.options().lore()));
+                        if (item.options.loreHasPlaceholders) {
+                            meta.lore = item.getMenuItemLore(this@MenuHolder, item.options.lore)
                         }
 
-                        i.setItemMeta(meta);
-                        i.setAmount(amt);
+                        i.itemMeta = meta
+                        i.amount = amt
                     }
                 }
             }
-
-        }.runTaskTimerAsynchronously(plugin, 20L,
-                20L * Menu.getMenuByName(menuName)
-                        .map(Menu::options)
-                        .map(MenuOptions::updateInterval)
-                        .orElse(10));
-    }
-
-    public boolean isUpdating() {
-        return updating;
-    }
-
-    public void setUpdating(boolean updating) {
-        this.updating = updating;
-    }
-
-    @Override
-    public @NotNull Inventory getInventory() {
-        return this.inventory;
-    }
-
-    public void setInventory(Inventory i) {
-        this.inventory = i;
-    }
-
-    public Map<String, String> getTypedArgs() {
-        return typedArgs;
-    }
-
-    public void setTypedArgs(Map<String, String> typedArgs) {
-        this.typedArgs = typedArgs;
-    }
-
-    public void parsePlaceholdersInArguments(final boolean parsePlaceholdersInArguments) {
-        this.parsePlaceholdersInArguments = parsePlaceholdersInArguments;
-    }
-
-    public void parsePlaceholdersAfterArguments(final boolean parsePlaceholdersAfterArguments) {
-        this.parsePlaceholdersAfterArguments = parsePlaceholdersAfterArguments;
-    }
-
-    public boolean parsePlaceholdersInArguments() {
-        return parsePlaceholdersInArguments;
-    }
-
-    public boolean parsePlaceholdersAfterArguments() {
-        return parsePlaceholdersAfterArguments;
-    }
-
-    public void setPlaceholderPlayer(Player placeholderPlayer) {
-        this.placeholderPlayer = placeholderPlayer;
-    }
-
-    public Player getPlaceholderPlayer() {
-        return placeholderPlayer;
-    }
-
-    public @NotNull DeluxeMenus getPlugin() {
-        return plugin;
+        }.runTaskTimerAsynchronously(plugin, 20L, 20L * (Menu.getMenuByName(menuName!!)?.options?.updateInterval ?: 10))
     }
 }

@@ -1,64 +1,38 @@
-package com.extendedclip.deluxemenus.persistentmeta;
+package com.extendedclip.deluxemenus.persistentmeta
 
-import com.extendedclip.deluxemenus.DeluxeMenus;
-import com.extendedclip.deluxemenus.utils.DebugLevel;
-import com.extendedclip.deluxemenus.utils.Pair;
-import com.google.common.primitives.Doubles;
-import com.google.common.primitives.Longs;
-import org.bukkit.NamespacedKey;
-import org.bukkit.entity.Player;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import com.extendedclip.deluxemenus.DeluxeMenus
+import com.extendedclip.deluxemenus.utils.DebugLevel
+import org.bukkit.NamespacedKey
+import org.bukkit.entity.Player
+import java.util.logging.Level
 
-import java.util.Map;
-import java.util.logging.Level;
-import java.util.stream.Collectors;
-
-@SuppressWarnings({"unchecked", "rawtypes"})
-public class PersistentMetaHandler {
-
-    private final DeluxeMenus plugin;
-
-    public PersistentMetaHandler(@NotNull final DeluxeMenus plugin) {
-        this.plugin = plugin;
-    }
-
+class PersistentMetaHandler(private val plugin: DeluxeMenus) {
     /**
-     * Check if a player has a meta value in their {@link org.bukkit.persistence.PersistentDataContainer}.
-     * It will check all supported types. See {@link DataType#getSupportedTypes()}.
+     * Check if a player has a meta value in their [org.bukkit.persistence.PersistentDataContainer].
+     * It will check all supported types. See [DataType.supportedTypes].
      *
      * @param player The player to check.
      * @param key    The key of the meta value.
      * @return True if the player has the meta value, false if not.
      */
-    public boolean hasMetaValue(
-            @NotNull final Player player,
-            @NotNull final NamespacedKey key
-    ) {
-        return DataType.getSupportedTypes()
-                .stream()
-                .distinct()
-                .anyMatch(type -> hasMetaValue(player, key, type));
-    }
+    fun hasMetaValue(player: Player, key: NamespacedKey) = DataType.supportedTypes.any { hasMetaValue(player, key, it) }
 
     /**
-     * Check if a player has a meta value in their {@link org.bukkit.persistence.PersistentDataContainer}.
+     * Check if a player has a meta value in their [org.bukkit.persistence.PersistentDataContainer].
      *
      * @param player The player to check.
      * @param key    The key of the meta value.
      * @param type   The type of the meta value.
      * @return True if the player has the meta value, false if not.
      */
-    public boolean hasMetaValue(
-            @NotNull final Player player,
-            @NotNull final NamespacedKey key,
-            @NotNull final DataType<?, ?> type
-    ) {
-        return player.getPersistentDataContainer().has(key, type.getPDType()) && type.isSupported(player.getPersistentDataContainer().get(key, type.getPDType()));
-    }
+    fun hasMetaValue(
+        player: Player,
+        key: NamespacedKey,
+        type: DataType<*, *>
+    ) = player.persistentDataContainer.has(key, type.pDType) && type.isSupported(player.persistentDataContainer.get(key, type.pDType))
 
     /**
-     * Get a meta value from a player's {@link org.bukkit.persistence.PersistentDataContainer}.
+     * Get a meta value from a player's [org.bukkit.persistence.PersistentDataContainer].
      * If the meta value is not found, null is returned.
      *
      * @param player The player to get the meta value from.
@@ -66,25 +40,19 @@ public class PersistentMetaHandler {
      * @param type   The type of the meta value.
      * @return The meta value or null if no meta value was found.
      */
-    public @Nullable <T> T getMetaValue(
-            @NotNull final Player player,
-            @NotNull final NamespacedKey key,
-            @NotNull final DataType<?, T> type
-    ) {
-        if (!player.getPersistentDataContainer().has(key, type.getPDType())) {
-            return null;
-        }
+    fun <T> getMetaValue(
+        player: Player,
+        key: NamespacedKey,
+        type: DataType<*, T>
+    ): T? {
+        if (!player.persistentDataContainer.has(key, type.pDType)) return null
 
-        final T value = player.getPersistentDataContainer().get(key, type.getPDType());
-        if (value == null || !type.isSupported(value)) {
-            return null;
-        }
-
-        return value;
+        val value = player.persistentDataContainer.get(key, type.pDType)
+        return if (value != null && type.isSupported(value)) value else null
     }
 
     /**
-     * Get a meta value from a player's {@link org.bukkit.persistence.PersistentDataContainer}.
+     * Get a meta value from a player's [org.bukkit.persistence.PersistentDataContainer].
      * If the meta value is not found, the default value is returned.
      *
      * @param player       The player to get the meta value from.
@@ -93,40 +61,33 @@ public class PersistentMetaHandler {
      * @param defaultValue The default value to return if no meta value was found.
      * @return The meta value or the default value if no meta value was found.
      */
-    public @NotNull <T> T getMetaValueOrDefault(
-            @NotNull final Player player,
-            @NotNull final NamespacedKey key,
-            @NotNull final DataType<?, T> type,
-            @NotNull final T defaultValue
-    ) {
-        final T value = getMetaValue(player, key, type);
-        if (value != null) {
-            return value;
-        }
-        return defaultValue;
-    }
+    fun <T> getMetaValueOrDefault(
+        player: Player,
+        key: NamespacedKey,
+        type: DataType<*, T>,
+        defaultValue: T
+    ) = getMetaValue(player, key, type) ?: defaultValue
 
     /**
-     * Get a list of all meta values of the given type from a player's {@link org.bukkit.persistence.PersistentDataContainer}.
+     * Get a list of all meta values of the given type from a player's [org.bukkit.persistence.PersistentDataContainer].
      *
      * @param player The player to get the meta values from.
      * @param type   The type of the meta values.
      * @return A map of all meta values.
      */
-    public <T> Map<String, T> getMetaValues(
-            @NotNull final Player player,
-            @NotNull final DataType<?, T> type
-    ) {
-        return player.getPersistentDataContainer().getKeys().stream()
-                .filter(key -> player.getPersistentDataContainer().has(key, type.getPDType()))
-                .map(key -> Pair.of(key.toString(), player.getPersistentDataContainer().get(key, type.getPDType())))
-                .filter(entry -> entry.getValue() != null)
-                .filter(entry -> type.isSupported(entry.getValue()))
-                .collect(Collectors.toMap(Pair::getKey, Pair::getValue));
-    }
+    fun <T> getMetaValues(
+        player: Player,
+        type: DataType<*, T>
+    ) = player.persistentDataContainer.keys
+        .filter { player.persistentDataContainer.has(it, type.pDType) }
+        .map { it.toString() to player.persistentDataContainer.get(it, type.pDType) }
+        .filter { it.second != null }
+        .map { it.first to it.second!! }
+        .filter { type.isSupported(it.second) }
+        .toMap()
 
     /**
-     * Set a meta value in a player's {@link org.bukkit.persistence.PersistentDataContainer}.
+     * Set a meta value in a player's [org.bukkit.persistence.PersistentDataContainer].
      * If the meta value already exists, it will be overwritten.
      *
      * @param player The player to set the meta value for.
@@ -135,74 +96,67 @@ public class PersistentMetaHandler {
      * @param value  The value to set.
      * @return The result of the operation.
      */
-    public @NotNull OperationResult setMetaValue(
-            @NotNull final Player player,
-            @NotNull final NamespacedKey key,
-            @NotNull final DataType type,
-            @NotNull final Object value
-    ) {
-        if (!type.isSupported(value)) {
-            return OperationResult.NEW_VALUE_IS_DIFFERENT_TYPE;
-        }
+    fun setMetaValue(
+        player: Player,
+        key: NamespacedKey,
+        type: DataType<*, Any>,
+        value: Any
+    ): OperationResult {
+        if (!type.isSupported(value)) return OperationResult.NEW_VALUE_IS_DIFFERENT_TYPE
 
-        if (player.getPersistentDataContainer().has(key) &&
-                (!player.getPersistentDataContainer().has(key, type.getPDType()) || !type.isSupported(player.getPersistentDataContainer().get(key, type.getPDType())))) {
-            return OperationResult.EXISTENT_VALUE_IS_DIFFERENT_TYPE;
-        }
+        if (player.persistentDataContainer.has(key)
+            && (!player.persistentDataContainer.has(key, type.pDType) || !type.isSupported(player.persistentDataContainer.get(key, type.pDType)))
+        ) return OperationResult.EXISTENT_VALUE_IS_DIFFERENT_TYPE
 
-        player.getPersistentDataContainer().set(key, type.getPDType(), value);
-        return OperationResult.SUCCESS;
+        player.persistentDataContainer.set(key, type.pDType, value)
+        return OperationResult.SUCCESS
     }
 
     /**
-     * Remove a meta value from a player's {@link org.bukkit.persistence.PersistentDataContainer}.
+     * Remove a meta value from a player's [org.bukkit.persistence.PersistentDataContainer].
      *
      * @param player The player to remove the meta value from.
      * @param key    The key of the meta value.
      * @param type  The type of the meta value.
      * @return The result of the operation.
      */
-    public @NotNull OperationResult removeMetaValue(
-            @NotNull final Player player,
-            @NotNull final NamespacedKey key,
-            @NotNull final DataType<?, ?> type
-    ) {
-        if (player.getPersistentDataContainer().has(key) &&
-                (!player.getPersistentDataContainer().has(key, type.getPDType()) || !type.isSupported(player.getPersistentDataContainer().get(key, type.getPDType())))) {
-            return OperationResult.EXISTENT_VALUE_IS_DIFFERENT_TYPE;
-        }
+    fun removeMetaValue(
+        player: Player,
+        key: NamespacedKey,
+        type: DataType<*, *>
+    ): OperationResult {
+        if (player.persistentDataContainer.has(key)
+            && (!player.persistentDataContainer.has(key, type.pDType) || !type.isSupported(player.persistentDataContainer.get(key, type.pDType)))
+        ) return OperationResult.EXISTENT_VALUE_IS_DIFFERENT_TYPE
 
-        if (!player.getPersistentDataContainer().has(key, type.getPDType())) {
-            return OperationResult.VALUE_NOT_FOUND;
-        }
+        if (!player.persistentDataContainer.has(key, type.pDType)) return OperationResult.VALUE_NOT_FOUND
 
-        player.getPersistentDataContainer().remove(key);
-        return OperationResult.SUCCESS;
+        player.persistentDataContainer.remove(key)
+        return OperationResult.SUCCESS
     }
 
     /**
-     * Remove a meta value from a player's {@link org.bukkit.persistence.PersistentDataContainer}.
+     * Remove a meta value from a player's [org.bukkit.persistence.PersistentDataContainer].
      *
      * @param player The player to remove the meta value from.
      * @param key    The key of the meta value.
      * @return The result of the operation.
      */
-    public @NotNull OperationResult removeMetaValue(
-            @NotNull final Player player,
-            @NotNull final NamespacedKey key
-    ) {
-        if (!player.getPersistentDataContainer().has(key)) {
-            return OperationResult.VALUE_NOT_FOUND;
-        }
+    fun removeMetaValue(
+        player: Player,
+        key: NamespacedKey
+    ): OperationResult {
+        if (!player.persistentDataContainer.has(key)) return OperationResult.VALUE_NOT_FOUND
 
-        player.getPersistentDataContainer().remove(key);
-        return OperationResult.SUCCESS;
+        player.persistentDataContainer.remove(key)
+        return OperationResult.SUCCESS
     }
 
 
     /**
-     * Switch a meta value in a player's {@link org.bukkit.persistence.PersistentDataContainer}.
-     * <p>The value must be a boolean.
+     * Switch a meta value in a player's [org.bukkit.persistence.PersistentDataContainer].
+     *
+     * The value must be a boolean.
      * If the meta value does not exist, it will be created and set to true.
      * If the meta value is not a boolean, it will not be changed.
      *
@@ -210,26 +164,28 @@ public class PersistentMetaHandler {
      * @param key    The key of the meta value.
      * @return The result of the operation.
      */
-    public @NotNull OperationResult switchMetaValue(
-            @NotNull final Player player,
-            @NotNull final NamespacedKey key
-    ) {
-        if (player.getPersistentDataContainer().has(key) && !player.getPersistentDataContainer().has(key, DataType.BOOLEAN.getPDType())) {
-            return OperationResult.EXISTENT_VALUE_IS_DIFFERENT_TYPE;
-        }
+    fun switchMetaValue(
+        player: Player,
+        key: NamespacedKey
+    ): OperationResult {
+        if (player.persistentDataContainer.has(key) && !player.persistentDataContainer.has(key, DataType.BOOLEAN.pDType)
+        ) return OperationResult.EXISTENT_VALUE_IS_DIFFERENT_TYPE
 
-        final String currentValue = player.getPersistentDataContainer().getOrDefault(key, DataType.BOOLEAN.getPDType(), "false");
-        if (!DataType.BOOLEAN.isSupported(currentValue)) {
-            return OperationResult.EXISTENT_VALUE_IS_DIFFERENT_TYPE;
-        }
+        val currentValue = player.persistentDataContainer.getOrDefault(key, DataType.BOOLEAN.pDType, "false")
+        if (!DataType.BOOLEAN.isSupported(currentValue)) return OperationResult.EXISTENT_VALUE_IS_DIFFERENT_TYPE
 
-        player.getPersistentDataContainer().set(key, DataType.BOOLEAN.getPDType(), currentValue.equalsIgnoreCase("true") ? "false" : "true");
-        return OperationResult.SUCCESS;
+        player.persistentDataContainer.set(
+            key,
+            DataType.BOOLEAN.pDType,
+            if (currentValue.equals("true", ignoreCase = true)) "false" else "true"
+        )
+        return OperationResult.SUCCESS
     }
 
     /**
-     * Perform addition on a meta value in a player's {@link org.bukkit.persistence.PersistentDataContainer}.
-     * <p>The value must be a number.
+     * Perform addition on a meta value in a player's [org.bukkit.persistence.PersistentDataContainer].
+     *
+     * The value must be a number.
      * If the meta value does not exist, it will be created with the given value.
      * If the meta value is not a number, it will not be changed.
      *
@@ -239,37 +195,37 @@ public class PersistentMetaHandler {
      * @param value  The value to add.
      * @return The result of the operation.
      */
-    public @NotNull OperationResult addMetaValue(
-            @NotNull final Player player,
-            @NotNull final NamespacedKey key,
-            @NotNull final DataType type,
-            @NotNull final Number value
-    ) {
-        if (type != DataType.DOUBLE && type != DataType.LONG && type != DataType.INTEGER) {
-            return OperationResult.INVALID_TYPE;
+    fun addMetaValue(
+        player: Player,
+        key: NamespacedKey,
+        type: DataType<*, *>,
+        value: Number
+    ): OperationResult {
+        if (type != DataType.DOUBLE && type != DataType.LONG && type != DataType.INTEGER) return OperationResult.INVALID_TYPE
+
+        if (player.persistentDataContainer.has(key)
+            && (!player.persistentDataContainer.has(key, type.pDType) || !type.isSupported(player.persistentDataContainer.get(key, type.pDType)))
+        ) return OperationResult.EXISTENT_VALUE_IS_DIFFERENT_TYPE
+
+        val currentValue = player.persistentDataContainer.get(key, type.pDType)
+
+        when (type) {
+            DataType.DOUBLE -> {
+                val newValue = (currentValue ?: 0.0).toDouble() - value.toDouble()
+                player.persistentDataContainer.set(key, type.pDType, newValue)
+            }
+            DataType.INTEGER, DataType.LONG -> {
+                val newValue = (currentValue ?: 0).toLong() + value.toLong()
+                player.persistentDataContainer.set(key, type.pDType, newValue)
+            }
         }
-
-        if (player.getPersistentDataContainer().has(key) &&
-                (!player.getPersistentDataContainer().has(key, type.getPDType()) || !type.isSupported(player.getPersistentDataContainer().get(key, type.getPDType())))) {
-            return OperationResult.EXISTENT_VALUE_IS_DIFFERENT_TYPE;
-        }
-
-        final Object currentValue = player.getPersistentDataContainer().get(key, type.getPDType());
-
-        if (type == DataType.DOUBLE) {
-            final double newValue = (double) (currentValue == null ? 0.0 : currentValue) + value.doubleValue();
-            player.getPersistentDataContainer().set(key, type.getPDType(), newValue);
-            return OperationResult.SUCCESS;
-        }
-
-        final long newValue = ((Number) (currentValue == null ? 0 : currentValue)).longValue() + value.longValue();
-        player.getPersistentDataContainer().set(key, type.getPDType(), newValue);
-        return OperationResult.SUCCESS;
+        return OperationResult.SUCCESS
     }
 
     /**
-     * Perform subtraction on a meta value in a player's {@link org.bukkit.persistence.PersistentDataContainer}.
-     * <p>The value must be a number.
+     * Perform subtraction on a meta value in a player's [org.bukkit.persistence.PersistentDataContainer].
+     *
+     * The value must be a number.
      * If the meta value does not exist, it will be created with the given value.
      * If the meta value is not a number, it will not be changed.
      *
@@ -279,103 +235,78 @@ public class PersistentMetaHandler {
      * @param value  The value to subtract.
      * @return The result of the operation.
      */
-    public @NotNull OperationResult subtractMetaValue(
-            @NotNull final Player player,
-            @NotNull final NamespacedKey key,
-            @NotNull final DataType type,
-            @NotNull final Number value
-    ) {
-        if (type != DataType.DOUBLE && type != DataType.LONG && type != DataType.INTEGER) {
-            return OperationResult.INVALID_TYPE;
+    fun subtractMetaValue(
+        player: Player,
+        key: NamespacedKey,
+        type: DataType<*, *>,
+        value: Number
+    ): OperationResult {
+        if (type != DataType.DOUBLE && type != DataType.LONG && type != DataType.INTEGER) return OperationResult.INVALID_TYPE
+
+        if (player.persistentDataContainer.has(key)
+            && (!player.persistentDataContainer.has(key, type.pDType) || !type.isSupported(player.persistentDataContainer.get(key, type.pDType)))
+        ) return OperationResult.EXISTENT_VALUE_IS_DIFFERENT_TYPE
+
+        val currentValue = player.persistentDataContainer.get(key, type.pDType)
+
+        when (type) {
+            DataType.DOUBLE -> {
+                val newValue = (currentValue ?: 0.0).toDouble() - value.toDouble()
+                player.persistentDataContainer.set(key, type.pDType, newValue)
+            }
+            DataType.INTEGER, DataType.LONG -> {
+                val newValue = (currentValue ?: 0).toLong() - value.toLong()
+                player.persistentDataContainer.set(key, type.pDType, newValue)
+            }
         }
-
-        if (player.getPersistentDataContainer().has(key) &&
-                (!player.getPersistentDataContainer().has(key, type.getPDType()) || !type.isSupported(player.getPersistentDataContainer().get(key, type.getPDType())))) {
-            return OperationResult.EXISTENT_VALUE_IS_DIFFERENT_TYPE;
-        }
-
-        final Object currentValue = player.getPersistentDataContainer().get(key, type.getPDType());
-
-        if (type == DataType.DOUBLE) {
-            final double newValue = (double) (currentValue == null ? 0.0 : currentValue) - value.doubleValue();
-            player.getPersistentDataContainer().set(key, type.getPDType(), newValue);
-            return OperationResult.SUCCESS;
-        }
-
-        final long newValue = ((Number) (currentValue == null ? 0 : currentValue)).longValue() - value.longValue();
-        player.getPersistentDataContainer().set(key, type.getPDType(), newValue);
-        return OperationResult.SUCCESS;
+        return OperationResult.SUCCESS
     }
 
     /**
      * Parse and execute a meta action from a string.
-     * <br>The format is: &lt;action&gt; &lt;key&gt; &lt;type&gt; [value].
-     * <br>Example: set points INTEGER 0
+     * <br></br>The format is: &lt;action&gt; &lt;key&gt; &lt;type&gt; [value].
+     * <br></br>Example: set points INTEGER 0
      *
      * @param player The player to execute the action for.
      * @param input  The action to execute.
      * @return The result of the operation.
-     **/
-    public @NotNull OperationResult parseAndExecuteMetaActionFromString(
-            @NotNull final Player player,
-            @NotNull final String input
-    ) {
+     */
+    fun parseAndExecuteMetaActionFromString(
+        player: Player,
+        input: String
+    ): OperationResult {
         // <action> <key> [type] [value] - type is optional for switch action since it only toggles a boolean
-        String[] args = input.split(" ", 4);
+        val args = input.split(" ", limit = 4)
 
-        if (args.length < 2) {
-            return OperationResult.INVALID_SYNTAX;
+        if (args.size < 2) return OperationResult.INVALID_SYNTAX
+
+        val action = DataAction.getActionByName(args[0]) ?: return OperationResult.INVALID_SYNTAX
+        val key = getKey(args[1]) ?: return OperationResult.INVALID_SYNTAX
+        if (action == DataAction.SWITCH) return switchMetaValue(player, key)
+        if (args.size < 3) return OperationResult.INVALID_SYNTAX
+
+        val type = DataType.getSupportedTypeByName(args[2]) ?: return OperationResult.INVALID_SYNTAX
+
+        val parsedValue = parseValueByType(type, if (args.size >= 4) args[3] else null)
+
+        return when (action) {
+            DataAction.SET -> {
+                if (parsedValue == null) OperationResult.NEW_VALUE_IS_DIFFERENT_TYPE
+                else setMetaValue(player, key, type as DataType<*, Any>, parsedValue)
+            }
+            DataAction.ADD -> {
+                if (parsedValue !is Number) OperationResult.NEW_VALUE_IS_DIFFERENT_TYPE
+                else addMetaValue(player, key, type, parsedValue)
+            }
+            DataAction.SUBTRACT -> {
+                if (parsedValue !is Number) OperationResult.NEW_VALUE_IS_DIFFERENT_TYPE
+                else subtractMetaValue(player, key, type, parsedValue)
+            }
+            DataAction.REMOVE -> return removeMetaValue(player, key, type)
+
+            else -> OperationResult.INVALID_SYNTAX
         }
 
-        DataAction action = DataAction.getActionByName(args[0]);
-        if (action == null) {
-            return OperationResult.INVALID_SYNTAX;
-        }
-
-        final NamespacedKey key = getKey(args[1]);
-        if (key == null) {
-            return OperationResult.INVALID_SYNTAX;
-        }
-
-        if (action == DataAction.SWITCH) {
-            return switchMetaValue(player, key);
-        }
-
-        if (args.length < 3) {
-            return OperationResult.INVALID_SYNTAX;
-        }
-
-        final DataType<?, ?> type = DataType.getSupportedTypeByName(args[2]);
-        if (type == null) {
-            return OperationResult.INVALID_SYNTAX;
-        }
-
-        final Object parsedValue = parseValueByType(type, args.length >= 4 ? args[3] : null);
-
-        switch (action) {
-            case SET:
-                if (parsedValue == null) {
-                    return OperationResult.NEW_VALUE_IS_DIFFERENT_TYPE;
-                }
-
-                return setMetaValue(player, key, type, parsedValue);
-            case REMOVE:
-                return removeMetaValue(player, key, type);
-            case ADD:
-                if (!(parsedValue instanceof Number)) {
-                    return OperationResult.NEW_VALUE_IS_DIFFERENT_TYPE;
-                }
-
-                return addMetaValue(player, key, type, (Number) parsedValue);
-            case SUBTRACT:
-                if (!(parsedValue instanceof Number)) {
-                    return OperationResult.NEW_VALUE_IS_DIFFERENT_TYPE;
-                }
-
-                return subtractMetaValue(player, key, type, (Number) parsedValue);
-        }
-
-        return OperationResult.INVALID_SYNTAX;
     }
 
     /**
@@ -385,74 +316,55 @@ public class PersistentMetaHandler {
      * @param value The value to parse.
      * @return The parsed value or null if the value is null or could not be parsed.
      */
-    public @Nullable Object parseValueByType(
-            @NotNull final DataType<?, ?> type,
-            @Nullable final String value
-    ) {
-        if (value == null) {
-            return null;
-        }
-
-        if (type == DataType.BOOLEAN) {
-            if (!value.equalsIgnoreCase("true") && !value.equalsIgnoreCase("false")) {
-                return null;
-            }
-
-            return value;
-        }
-
-        if (type == DataType.STRING) {
-            return value;
-        }
-
-        if (type == DataType.DOUBLE) {
-            return Doubles.tryParse(value);
-        }
-
-        if (type == DataType.LONG || type == DataType.INTEGER) {
-            return Longs.tryParse(value);
-        }
-
-        return null;
+    fun parseValueByType(
+        type: DataType<*, *>,
+        value: String?
+    ): Any? {
+        if (value == null) return null
+        if (type == DataType.BOOLEAN) return value.lowercase().toBooleanStrictOrNull()
+        if (type == DataType.STRING) return value
+        if (type == DataType.DOUBLE) return value.toDoubleOrNull()
+        if (type == DataType.LONG || type == DataType.INTEGER) value.toLong()
+        return null
     }
 
     /**
-     * Helper method to parse a string into a {@link NamespacedKey}.
+     * Helper method to parse a string into a [NamespacedKey].
      * If the key contains a namespace, it will use that, otherwise it will use the plugin's namespace. If the key is
      * invalid, it will log a warning and return null.
      *
      * @param key The string to parse.
-     * @return The {@link NamespacedKey} or null if the key could not be parsed.
+     * @return The [NamespacedKey] or null if the key could not be parsed.
      */
-    @SuppressWarnings("UnstableApiUsage")
-    public @Nullable NamespacedKey getKey(@NotNull final String key) {
-        final NamespacedKey namespacedKey;
+    fun getKey(key: String): NamespacedKey? {
+        val namespacedKey: NamespacedKey
 
         try {
             if (key.contains(":")) {
-                final String[] split = key.split(":", 2);
-                namespacedKey = new NamespacedKey(split[0], split[1]);
+                val split = key.split(":", limit = 2)
+                @Suppress("UnstableApiUsage")
+                namespacedKey = NamespacedKey(split[0], split[1])
             } else {
-                namespacedKey = new NamespacedKey(plugin, key);
+                namespacedKey = NamespacedKey(plugin, key)
             }
-        } catch (final IllegalArgumentException e) {
+        } catch (e: IllegalArgumentException) {
             plugin.debug(
-                    DebugLevel.HIGHEST,
-                    Level.WARNING,
-                    "Failed to parse meta key with value: '" + key + "'. Reason: " + e.getMessage()
-            );
-            return null;
+                DebugLevel.HIGHEST,
+                Level.WARNING,
+                "Failed to parse meta key with value: '" + key + "'. Reason: " + e.message
+            )
+            return null
         }
 
-        return namespacedKey;
+        return namespacedKey
     }
 
-    public enum OperationResult {
+    enum class OperationResult {
         SUCCESS,  // Operation was successful
         INVALID_SYNTAX,  // Used when parsing an action from a string and the syntax is invalid
         INVALID_TYPE,  // Used when the type is not supported
         VALUE_NOT_FOUND,  // Used when no value was found with the specified key and/or type
         EXISTENT_VALUE_IS_DIFFERENT_TYPE,  // Used when the value already exists but is a different type
-        NEW_VALUE_IS_DIFFERENT_TYPE  // Used when the new value is of an unsupported type
+        NEW_VALUE_IS_DIFFERENT_TYPE // Used when the new value is of an unsupported type
     }
 }

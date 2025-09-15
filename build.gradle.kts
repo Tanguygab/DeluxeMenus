@@ -1,5 +1,7 @@
+import org.gradle.kotlin.dsl.support.kotlinCompilerOptions
+
 plugins {
-    java
+    kotlin("jvm") version "2.2.20-RC2"
     id("com.gradleup.shadow") version("8.3.5")
     id("com.github.ben-manes.versions") version("0.51.0")
 }
@@ -56,15 +58,13 @@ tasks {
         relocate("org.bstats", "com.extendedclip.deluxemenus.libs.bstats")
         archiveFileName.set("DeluxeMenus-${rootProject.version}.jar")
     }
-    java {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-        disableAutoTargetJvm()
-    }
 
     processResources {
         filesMatching("plugin.yml") {
             expand("version" to rootProject.version)
         }
     }
+}
+kotlin {
+    jvmToolchain(21)
 }

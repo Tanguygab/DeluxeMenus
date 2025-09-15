@@ -1,6 +1,6 @@
-package com.extendedclip.deluxemenus.menu.options;
+package com.extendedclip.deluxemenus.menu.options
 
-public enum LoreAppendMode {
+enum class LoreAppendMode {
     OVERRIDE,
     BOTTOM,
     TOP,

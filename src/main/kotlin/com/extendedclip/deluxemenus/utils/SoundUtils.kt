@@ -1,21 +1,18 @@
-package com.extendedclip.deluxemenus.utils;
+package com.extendedclip.deluxemenus.utils
 
-import org.bukkit.Sound;
+import org.bukkit.Sound
 
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
-
-public class SoundUtils {
-
-    public static Sound getSound(String name) {
+object SoundUtils {
+    fun getSound(name: String): Sound {
         try {
             // As of Minecraft 1.21.3, the org.bukkit.Sound class type changed from Enum to Interface.
             // This fixes java.lang.IncompatibleClassChangeError when trying to use versions prior to 1.21.3.
-            Method valueOfMethod = Class.forName("org.bukkit.Sound").getMethod("valueOf", String.class);
-            return (Sound) valueOfMethod.invoke(null, name);
-        } catch (ClassNotFoundException | NoSuchMethodException | IllegalAccessException | InvocationTargetException e) {
+            val valueOfMethod = Class.forName("org.bukkit.Sound").getMethod("valueOf", String::class.java)
+            return valueOfMethod.invoke(null, name) as Sound
+        } catch (_: Exception) {
             // Use the Sound#valueOf method if Reflection fails.
-            return Sound.valueOf(name);
+            @Suppress("DEPRECATION")
+            return Sound.valueOf(name)
         }
     }
 }

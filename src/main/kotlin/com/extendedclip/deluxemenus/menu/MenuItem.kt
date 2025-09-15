@@ -1,641 +1,556 @@
-package com.extendedclip.deluxemenus.menu;
+package com.extendedclip.deluxemenus.menu
 
-import com.extendedclip.deluxemenus.DeluxeMenus;
-import com.extendedclip.deluxemenus.hooks.ItemHook;
-import com.extendedclip.deluxemenus.menu.options.HeadType;
-import com.extendedclip.deluxemenus.menu.options.LoreAppendMode;
-import com.extendedclip.deluxemenus.menu.options.MenuItemOptions;
-import com.extendedclip.deluxemenus.menu.options.CustomModelDataComponent;
-import com.extendedclip.deluxemenus.nbt.NbtProvider;
-import com.extendedclip.deluxemenus.utils.DebugLevel;
-import com.extendedclip.deluxemenus.utils.ItemUtils;
-import com.extendedclip.deluxemenus.utils.StringUtils;
-import com.extendedclip.deluxemenus.utils.VersionHelper;
-import com.google.common.collect.ImmutableMultimap;
-import org.bukkit.Color;
-import org.bukkit.FireworkEffect;
-import org.bukkit.Material;
-import org.bukkit.Registry;
-import org.bukkit.NamespacedKey;
-import org.bukkit.block.Banner;
-import org.bukkit.block.data.BlockData;
-import org.bukkit.block.data.type.Light;
-import org.bukkit.enchantments.Enchantment;
-import org.bukkit.entity.Player;
-import org.bukkit.inventory.ItemFlag;
-import org.bukkit.inventory.ItemRarity;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ArmorMeta;
-import org.bukkit.inventory.meta.BannerMeta;
-import org.bukkit.inventory.meta.BlockDataMeta;
-import org.bukkit.inventory.meta.BlockStateMeta;
-import org.bukkit.inventory.meta.Damageable;
-import org.bukkit.inventory.meta.EnchantmentStorageMeta;
-import org.bukkit.inventory.meta.FireworkEffectMeta;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.inventory.meta.LeatherArmorMeta;
-import org.bukkit.inventory.meta.PotionMeta;
-import org.bukkit.inventory.meta.trim.ArmorTrim;
-import org.bukkit.inventory.meta.trim.TrimMaterial;
-import org.bukkit.inventory.meta.trim.TrimPattern;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.util.io.BukkitObjectInputStream;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import com.extendedclip.deluxemenus.DeluxeMenus
+import com.extendedclip.deluxemenus.menu.options.HeadType
+import com.extendedclip.deluxemenus.menu.options.LoreAppendMode
+import com.extendedclip.deluxemenus.menu.options.MenuItemOptions
+import com.extendedclip.deluxemenus.nbt.NbtProvider
+import com.extendedclip.deluxemenus.nbt.NbtProvider.isAvailable
+import com.extendedclip.deluxemenus.utils.*
+import com.google.common.collect.ImmutableMultimap
+import org.bukkit.Color
+import org.bukkit.FireworkEffect
+import org.bukkit.Material
+import org.bukkit.NamespacedKey
+import org.bukkit.Registry
+import org.bukkit.block.Banner
+import org.bukkit.block.data.type.Light
+import org.bukkit.inventory.ItemFlag
+import org.bukkit.inventory.ItemRarity
+import org.bukkit.inventory.ItemStack
+import org.bukkit.inventory.meta.*
+import org.bukkit.inventory.meta.components.CustomModelDataComponent
+import org.bukkit.inventory.meta.trim.ArmorTrim
+import org.bukkit.util.io.BukkitObjectInputStream
+import java.io.ByteArrayInputStream
+import java.util.Base64
+import java.util.logging.Level
+import kotlin.math.max
+import kotlin.math.min
 
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.util.Base64;
-import java.util.Arrays;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Objects;
-import java.util.logging.Level;
-import java.util.stream.Collectors;
+class MenuItem(private val plugin: DeluxeMenus, val options: MenuItemOptions) {
 
-import static com.extendedclip.deluxemenus.utils.Constants.INVENTORY_ITEM_ACCESSORS;
-import static com.extendedclip.deluxemenus.utils.Constants.PLACEHOLDER_PREFIX;
-import static com.extendedclip.deluxemenus.utils.Constants.STACK_PREFIX;
+    fun getItemStack(holder: MenuHolder): ItemStack? {
+        val viewer = holder.viewer
 
-public class MenuItem {
+        var itemStack: ItemStack? = null
+        var amount = 1
 
-    private final DeluxeMenus plugin;
-    private final MenuItemOptions options;
-
-    public MenuItem(@NotNull final DeluxeMenus plugin, @NotNull final MenuItemOptions options) {
-        this.plugin = plugin;
-        this.options = options;
-    }
-
-    public static ItemStack base64ToItemStack(String data) {
-        try {
-            byte[] bytes = Base64.getDecoder().decode(data);
-            ByteArrayInputStream inputStream = new ByteArrayInputStream(bytes);
-            BukkitObjectInputStream dataInput = new BukkitObjectInputStream(inputStream);
-            dataInput.close();
-            Object object = dataInput.readObject();
-            if (object instanceof ItemStack) {
-                return (ItemStack) object;
-            }
-            return null;
-        } catch (IllegalArgumentException e) {
-            return null;
-        } catch (IOException e) {
-            return null;
-        } catch (ClassNotFoundException e) {
-            return null;
-        }
-    }
-    public ItemStack getItemStack(@NotNull final MenuHolder holder) {
-        final Player viewer = holder.getViewer();
-
-        ItemStack itemStack = null;
-        int amount = 1;
-
-        String stringMaterial = this.options.material();
-        String lowercaseStringMaterial = stringMaterial.toLowerCase(Locale.ROOT);
+        var stringMaterial = options.material
+        var lowercaseStringMaterial = stringMaterial.lowercase()
 
         if (ItemUtils.isPlaceholderOption(lowercaseStringMaterial)) {
-            stringMaterial = holder.setPlaceholdersAndArguments(stringMaterial.substring(PLACEHOLDER_PREFIX.length()));
-            lowercaseStringMaterial = stringMaterial.toLowerCase(Locale.ENGLISH);
+            stringMaterial = holder.setPlaceholdersAndArguments(stringMaterial.substring(Constants.PLACEHOLDER_PREFIX.length))
+            lowercaseStringMaterial = stringMaterial.lowercase()
         }
         if (ItemUtils.isItemStackOption(lowercaseStringMaterial)) {
-            stringMaterial = holder.setPlaceholdersAndArguments(stringMaterial.substring(STACK_PREFIX.length()));
-            ItemStack base64Item = base64ToItemStack(stringMaterial);
+            stringMaterial = holder.setPlaceholdersAndArguments(stringMaterial.substring(Constants.STACK_PREFIX.length))
+            val base64Item: ItemStack? = base64ToItemStack(stringMaterial)
             if (base64Item != null) {
-                itemStack = base64Item;
-                amount = itemStack.getAmount();
-                lowercaseStringMaterial = itemStack.getType().toString().toLowerCase(Locale.ENGLISH);
+                itemStack = base64Item
+                amount = itemStack.amount
+                lowercaseStringMaterial = itemStack.type.toString().lowercase()
             }
         }
 
 
         if (ItemUtils.isPlayerItem(lowercaseStringMaterial)) {
-            final ItemStack playerItem = INVENTORY_ITEM_ACCESSORS.get(lowercaseStringMaterial).apply(viewer.getInventory());
+            val playerItem = Constants.INVENTORY_ITEM_ACCESSORS[lowercaseStringMaterial]!!(viewer.inventory)
 
-            if (playerItem == null || playerItem.getType() == Material.AIR) {
-                return new ItemStack(Material.AIR);
+            if (playerItem == null || playerItem.type == Material.AIR) {
+                return ItemStack(Material.AIR)
             }
 
-            itemStack = playerItem.clone();
-            amount = playerItem.getAmount();
+            itemStack = playerItem.clone()
+            amount = playerItem.amount
         }
 
-        final int temporaryAmount = amount;
+        val temporaryAmount = amount
 
-        final String finalMaterial = lowercaseStringMaterial;
-        final ItemHook pluginHook = plugin.getItemHooks().values()
-            .stream()
-            .filter(x -> finalMaterial.startsWith(x.getPrefix()))
-            .findFirst()
-            .orElse(null);
+        val finalMaterial = lowercaseStringMaterial
+        val pluginHook = plugin.itemHooks.values.find { finalMaterial.startsWith(it.prefix) }
 
         if (pluginHook != null) {
             itemStack = pluginHook.getItem(
-                    viewer,
-                    holder.setPlaceholdersAndArguments(stringMaterial.substring(pluginHook.getPrefix().length()))
-            );
+                viewer,
+                holder.setPlaceholdersAndArguments(stringMaterial.substring(pluginHook.prefix.length))
+            )
         }
 
         if (ItemUtils.isWaterBottle(stringMaterial)) {
-            itemStack = ItemUtils.createWaterBottles(amount);
+            itemStack = ItemUtils.createWaterBottles(amount)
         }
 
         // The item is neither a water bottle nor plugin hook item
         if (itemStack == null) {
-            final Material material = Material.getMaterial(stringMaterial.toUpperCase(Locale.ROOT));
+            val material = Material.getMaterial(stringMaterial.uppercase())
             if (material == null) {
                 plugin.debug(
-                        DebugLevel.HIGHEST,
-                        Level.WARNING,
-                        "Material: " + stringMaterial + " is not valid! Setting to Stone."
-                );
-                itemStack = new ItemStack(Material.STONE, temporaryAmount);
+                    DebugLevel.HIGHEST,
+                    Level.WARNING,
+                    "Material: $stringMaterial is not valid! Setting to Stone."
+                )
+                itemStack = ItemStack(Material.STONE, temporaryAmount)
             } else {
-                itemStack = new ItemStack(material, temporaryAmount);
+                itemStack = ItemStack(material, temporaryAmount)
             }
         }
 
-        if (ItemUtils.isBanner(itemStack.getType())) {
-            final BannerMeta meta = (BannerMeta) itemStack.getItemMeta();
+        if (ItemUtils.isBanner(itemStack.type)) {
+            val meta = itemStack.itemMeta as BannerMeta?
             if (meta != null) {
-                if (!this.options.bannerMeta().isEmpty()) {
-                    meta.setPatterns(this.options.bannerMeta());
+                if (!options.bannerMeta.isEmpty()) {
+                    meta.patterns = options.bannerMeta
                 }
-                itemStack.setItemMeta(meta);
+                itemStack.itemMeta = meta
             }
         }
 
-        if (ItemUtils.isShield(itemStack.getType())) {
-            final BlockStateMeta blockStateMeta = (BlockStateMeta) itemStack.getItemMeta();
+        if (ItemUtils.isShield(itemStack.type)) {
+            val blockStateMeta = itemStack.itemMeta as BlockStateMeta?
 
             if (blockStateMeta != null) {
-                final Banner banner = (Banner) blockStateMeta.getBlockState();
-                if (this.options.baseColor().isPresent()) {
-                    banner.setBaseColor(this.options.baseColor().get());
-                    banner.update();
-                    blockStateMeta.setBlockState(banner);
+                val banner = blockStateMeta.blockState as Banner
+                if (options.baseColor != null) {
+                    banner.baseColor = options.baseColor
+                    banner.update()
+                    blockStateMeta.blockState = banner
                 }
-                if (!this.options.bannerMeta().isEmpty()) {
-                    banner.setPatterns(this.options.bannerMeta());
-                    banner.update();
-                    blockStateMeta.setBlockState(banner);
+                if (!options.bannerMeta.isEmpty()) {
+                    banner.patterns = options.bannerMeta
+                    banner.update()
+                    blockStateMeta.blockState = banner
                 }
 
-                itemStack.setItemMeta(blockStateMeta);
+                itemStack.itemMeta = blockStateMeta
             }
         }
 
         if (ItemUtils.hasPotionMeta(itemStack)) {
-            final PotionMeta meta = (PotionMeta) itemStack.getItemMeta();
+            val meta = itemStack.itemMeta as PotionMeta?
 
             if (meta != null) {
-                if (this.options.rgb().isPresent()) {
-                    final Color color = parseRGBColor(holder.setPlaceholdersAndArguments(this.options.rgb().get()));
+                if (options.rgb != null) {
+                    val color = parseRGBColor(holder.setPlaceholdersAndArguments(options.rgb))
                     if (color != null) {
-                        meta.setColor(color);
+                        meta.color = color
                     }
                 }
 
-                if (!this.options.potionEffects().isEmpty()) {
-                    for (PotionEffect effect : this.options.potionEffects()) {
-                        meta.addCustomEffect(effect, true);
+                if (!options.potionEffects.isEmpty()) {
+                    for (effect in options.potionEffects) {
+                        meta.addCustomEffect(effect, true)
                     }
                 }
 
-                itemStack.setItemMeta(meta);
+                itemStack.itemMeta = meta
             }
         }
 
-        if (itemStack.getType() == Material.AIR) {
-            return itemStack;
-        }
+        if (itemStack.type == Material.AIR) return itemStack
 
-        if (this.options.damage().isPresent()) {
-            final String parsedDamage = holder.setPlaceholdersAndArguments(this.options.damage().get());
+        if (options.damage != null) {
+            val parsedDamage = holder.setPlaceholdersAndArguments(options.damage)
             try {
-                int damage = Integer.parseInt(parsedDamage);
+                val damage = parsedDamage.toInt()
                 if (damage > 0) {
-                    final ItemMeta meta = itemStack.getItemMeta();
-                    if (meta instanceof Damageable) {
-                        ((Damageable) meta).setDamage(damage);
-                        itemStack.setItemMeta(meta);
+                    val meta = itemStack.itemMeta
+                    if (meta is Damageable) {
+                        meta.damage = damage
+                        itemStack.itemMeta = meta
                     }
                 }
-            } catch (final NumberFormatException exception) {
+            } catch (exception: NumberFormatException) {
                 plugin.printStacktrace(
-                        "Invalid damage found: " + parsedDamage + ".",
-                        exception
-                );
+                    "Invalid damage found: $parsedDamage.",
+                    exception
+                )
             }
         }
 
-        if (this.options.amount() != -1) {
-            amount = this.options.amount();
+        if (options.amount != -1) {
+            amount = options.amount
         }
 
-        if (this.options.dynamicAmount().isPresent()) {
+        if (options.dynamicAmount != null) {
             try {
-                final int dynamicAmount = (int) Double.parseDouble(holder.setPlaceholdersAndArguments(this.options.dynamicAmount().get()));
-                amount = Math.max(dynamicAmount, 1);
-            } catch (final NumberFormatException ignored) {
-            }
+                val dynamicAmount = holder.setPlaceholdersAndArguments(options.dynamicAmount).toDouble().toInt()
+                amount = max(dynamicAmount, 1)
+            } catch (_: NumberFormatException) {}
         }
 
-        if (amount > 64) {
-            amount = 64;
-        }
+        if (amount > 64) amount = 64
 
-        itemStack.setAmount(amount);
+        itemStack.amount = amount
 
-        final ItemMeta itemMeta = itemStack.getItemMeta();
-        if (itemMeta == null) {
-            return itemStack;
-        }
+        val itemMeta = itemStack.itemMeta ?: return itemStack
 
-        if (VersionHelper.IS_CUSTOM_MODEL_DATA && this.options.customModelData().isPresent()) {
+        if (VersionHelper.IS_CUSTOM_MODEL_DATA && options.customModelData != null) {
             try {
-                final int modelData = Integer.parseInt(holder.setPlaceholdersAndArguments(this.options.customModelData().get()));
-                itemMeta.setCustomModelData(modelData);
-            } catch (final Exception ignored) {
-            }
+                val modelData = holder.setPlaceholdersAndArguments(options.customModelData).toInt()
+                @Suppress("DEPRECATION")
+                itemMeta.setCustomModelData(modelData)
+            } catch (_: Exception) {}
         }
 
-        if (VersionHelper.IS_CUSTOM_MODEL_DATA_COMPONENT && this.options.customModelDataComponent().isPresent()) {
-            itemMeta.setCustomModelDataComponent(parseCustomModelDataComponent(this.options.customModelDataComponent().get(), itemMeta.getCustomModelDataComponent(), holder));
+        if (VersionHelper.IS_CUSTOM_MODEL_DATA_COMPONENT && options.customModelDataComponent != null) {
+            @Suppress("UnstableApiUsage")
+            itemMeta.setCustomModelDataComponent(
+                parseCustomModelDataComponent(
+                    options.customModelDataComponent, itemMeta.customModelDataComponent, holder
+                )
+            )
         }
 
-        if (this.options.displayName().isPresent()) {
-            final String displayName = holder.setPlaceholdersAndArguments(this.options.displayName().get());
-            itemMeta.setDisplayName(StringUtils.color(displayName));
+        if (options.displayName != null) {
+            val displayName = holder.setPlaceholdersAndArguments(options.displayName)
+            itemMeta.setDisplayName(StringUtils.color(displayName))
         }
 
-        List<String> lore = new ArrayList<>();
+        val lore = mutableListOf<String>()
         // This checks if a lore should be kept from the hooked item, and then if a lore exists on the item
         // ItemMeta.getLore is nullable. In that case, we just create a new ArrayList so we don't add stuff to a null list.
-        List<String> itemLore = Objects.requireNonNullElse(itemMeta.getLore(), new ArrayList<>());
+        val itemLore = itemMeta.lore ?: mutableListOf<String>()
         // Ensures backwards compatibility with how hooked items are currently handled
-        LoreAppendMode mode = this.options.loreAppendMode().orElse(LoreAppendMode.OVERRIDE);
-        if (!this.options.hasLore() && this.options.loreAppendMode().isEmpty()) mode = LoreAppendMode.IGNORE;
-        switch (mode) {
-            case IGNORE: // DM lore is not added at all
-                lore.addAll(itemLore);
-                break;
-            case TOP: // DM lore is added at the top
-                lore.addAll(getMenuItemLore(holder, this.options.lore()));
-                lore.addAll(itemLore);
-                break;
-            case BOTTOM: // DM lore is bottom at the bottom
-                lore.addAll(itemLore);
-                lore.addAll(getMenuItemLore(holder, this.options.lore()));
-                break;
-            case OVERRIDE: // Lore from DM overrides the lore from the item
-                lore.addAll(getMenuItemLore(holder, this.options.lore()));
-                break;
+        var mode: LoreAppendMode = options.loreAppendMode ?: LoreAppendMode.OVERRIDE
+        if (!options.hasLore && options.loreAppendMode == null) mode = LoreAppendMode.IGNORE
+        when (mode) {
+            LoreAppendMode.IGNORE -> lore.addAll(itemLore)
+            LoreAppendMode.TOP -> {
+                lore.addAll(getMenuItemLore(holder, options.lore))
+                lore.addAll(itemLore)
+            }
+
+            LoreAppendMode.BOTTOM -> {
+                lore.addAll(itemLore)
+                lore.addAll(getMenuItemLore(holder, options.lore))
+            }
+
+            LoreAppendMode.OVERRIDE -> lore.addAll(getMenuItemLore(holder, options.lore))
         }
 
-        itemMeta.setLore(lore);
+        itemMeta.lore = lore
 
-        if (this.options.unbreakable()) {
-            itemMeta.setUnbreakable(true);
-        }
+        if (options.unbreakable) itemMeta.isUnbreakable = true
 
         if (VersionHelper.HAS_DATA_COMPONENTS) {
-            if (this.options.hideTooltip().isPresent()) {
-                String hideTooltip = holder.setPlaceholdersAndArguments(this.options.hideTooltip().get());
-                itemMeta.setHideTooltip(Boolean.parseBoolean(hideTooltip));
+            if (options.hideTooltip != null) {
+                val hideTooltip = holder.setPlaceholdersAndArguments(options.hideTooltip)
+                itemMeta.isHideTooltip = hideTooltip.toBoolean()
             }
-            if (this.options.enchantmentGlintOverride().isPresent()) {
-                String enchantmentGlintOverride = holder.setPlaceholdersAndArguments(this.options.enchantmentGlintOverride().get());
-                itemMeta.setEnchantmentGlintOverride(Boolean.parseBoolean(enchantmentGlintOverride));
+            if (options.enchantmentGlintOverride != null) {
+                val enchantmentGlintOverride = holder.setPlaceholdersAndArguments(options.enchantmentGlintOverride)
+                itemMeta.setEnchantmentGlintOverride(enchantmentGlintOverride.toBoolean())
             }
-            if (this.options.rarity().isPresent()) {
-                String rarity = holder.setPlaceholdersAndArguments(this.options.rarity().get());
+            if (options.rarity != null) {
+                val rarity = holder.setPlaceholdersAndArguments(options.rarity)
                 try {
-                    itemMeta.setRarity(ItemRarity.valueOf(rarity.toUpperCase()));
-                } catch (IllegalArgumentException e) {
+                    itemMeta.setRarity(ItemRarity.valueOf(rarity.uppercase()))
+                } catch (_: IllegalArgumentException) {
                     plugin.debug(
-                            DebugLevel.HIGHEST,
-                            Level.WARNING,
-                            "Rarity " + rarity + " is not a valid!"
-                    );
+                        DebugLevel.HIGHEST,
+                        Level.WARNING,
+                        "Rarity $rarity is not a valid!"
+                    )
                 }
             }
         }
         if (VersionHelper.HAS_TOOLTIP_STYLE) {
-            if (this.options.tooltipStyle().isPresent()) {
-                NamespacedKey tooltipStyle = NamespacedKey.fromString(holder.setPlaceholdersAndArguments(this.options.tooltipStyle().get()));
-                if (tooltipStyle != null) itemMeta.setTooltipStyle(tooltipStyle);
+            if (options.tooltipStyle != null) {
+                val tooltipStyle = NamespacedKey.fromString(holder.setPlaceholdersAndArguments(options.tooltipStyle))
+                if (tooltipStyle != null) itemMeta.tooltipStyle = tooltipStyle
             }
-            if (this.options.itemModel().isPresent()) {
-                NamespacedKey itemModel = NamespacedKey.fromString(holder.setPlaceholdersAndArguments(this.options.itemModel().get()));
-                if (itemModel != null) itemMeta.setItemModel(itemModel);
+            if (options.itemModel != null) {
+                val itemModel = NamespacedKey.fromString(holder.setPlaceholdersAndArguments(options.itemModel))
+                if (itemModel != null) itemMeta.itemModel = itemModel
             }
         }
 
         if (VersionHelper.HAS_ARMOR_TRIMS && ItemUtils.hasArmorMeta(itemStack)) {
-            final Optional<String> trimMaterialName = this.options.trimMaterial();
-            final Optional<String> trimPatternName = this.options.trimPattern();
+            val trimMaterialName = options.trimMaterial
+            val trimPatternName = options.trimPattern
 
-            if (trimMaterialName.isPresent() && trimPatternName.isPresent()) {
-                final TrimMaterial trimMaterial = Registry.TRIM_MATERIAL.match(holder.setPlaceholdersAndArguments(trimMaterialName.get()));
-                final TrimPattern trimPattern = Registry.TRIM_PATTERN.match(holder.setPlaceholdersAndArguments(trimPatternName.get()));
+            @Suppress("UnstableApiUsage")
+            if (trimMaterialName != null && trimPatternName != null) {
+                val trimMaterial = Registry.TRIM_MATERIAL.match(holder.setPlaceholdersAndArguments(trimMaterialName))
+                val trimPattern = Registry.TRIM_PATTERN.match(holder.setPlaceholdersAndArguments(trimPatternName))
 
                 if (trimMaterial != null && trimPattern != null) {
-                    final ArmorTrim armorTrim = new ArmorTrim(trimMaterial, trimPattern);
-                    final ArmorMeta armorMeta = (ArmorMeta) itemMeta;
-                    armorMeta.setTrim(armorTrim);
-                    itemStack.setItemMeta(armorMeta);
+                    val armorMeta = itemMeta as ArmorMeta
+                    armorMeta.trim = ArmorTrim(trimMaterial, trimPattern)
+                    itemStack.itemMeta = armorMeta
                 } else {
                     if (trimMaterial == null) {
                         plugin.debug(
-                                DebugLevel.HIGHEST,
-                                Level.WARNING,
-                                "Trim material " + trimMaterialName.get() + " is not a valid!"
-                        );
+                            DebugLevel.HIGHEST,
+                            Level.WARNING,
+                            "Trim material $trimMaterialName is not a valid!"
+                        )
                     }
 
                     if (trimPattern == null) {
                         plugin.debug(
-                                DebugLevel.HIGHEST,
-                                Level.WARNING,
-                                "Trim pattern " + trimPatternName.get() + " is not a valid!"
-                        );
+                            DebugLevel.HIGHEST,
+                            Level.WARNING,
+                            "Trim pattern $trimPatternName is not a valid!"
+                        )
                     }
                 }
-            } else if (trimMaterialName.isPresent()) {
+            } else if (trimMaterialName != null) {
                 plugin.debug(
-                        DebugLevel.HIGHEST,
-                        Level.WARNING,
-                        "Trim pattern is not set for item with trim material " + trimMaterialName.get()
-                );
-            } else if (trimPatternName.isPresent()) {
+                    DebugLevel.HIGHEST,
+                    Level.WARNING,
+                    "Trim pattern is not set for item with trim material $trimMaterialName"
+                )
+            } else if (trimPatternName != null) {
                 plugin.debug(
-                        DebugLevel.HIGHEST,
-                        Level.WARNING,
-                        "Trim material is not set for item with trim pattern " + trimPatternName.get()
-                );
+                    DebugLevel.HIGHEST,
+                    Level.WARNING,
+                    "Trim material is not set for item with trim pattern $trimPatternName"
+                )
             }
         }
 
-        if (itemMeta instanceof LeatherArmorMeta && this.options.rgb().isPresent()) {
-            final LeatherArmorMeta leatherArmorMeta = (LeatherArmorMeta) itemMeta;
-
-            final Color color = parseRGBColor(holder.setPlaceholdersAndArguments(this.options.rgb().get()));
-            if (color != null) {
-                leatherArmorMeta.setColor(color);
-            } else {
-                plugin.debug(
-                        DebugLevel.HIGHEST,
-                        Level.WARNING,
-                        "Invalid rgb colors found for leather armor: " + this.options.rgb().get()
-                );
-            }
-
-            itemStack.setItemMeta(leatherArmorMeta);
-        } else if (itemMeta instanceof FireworkEffectMeta && this.options.rgb().isPresent()) {
-            final FireworkEffectMeta fireworkEffectMeta = (FireworkEffectMeta) itemMeta;
-            final Color color = parseRGBColor(holder.setPlaceholdersAndArguments(this.options.rgb().get()));
-            if (color != null) {
-                fireworkEffectMeta.setEffect(FireworkEffect.builder().withColor(color).build());
-            } else {
-                plugin.debug(
-                        DebugLevel.HIGHEST,
-                        Level.WARNING,
-                        "Invalid RGB color found for firework or firework star: " + this.options.rgb().get()
-                );
-            }
-            itemStack.setItemMeta(fireworkEffectMeta);
-        } else if (itemMeta instanceof EnchantmentStorageMeta && !this.options.enchantments().isEmpty()) {
-            final EnchantmentStorageMeta enchantmentStorageMeta = (EnchantmentStorageMeta) itemMeta;
-            for (final Map.Entry<Enchantment, Integer> entry : this.options.enchantments().entrySet()) {
-                final boolean result = enchantmentStorageMeta.addStoredEnchant(entry.getKey(), entry.getValue(), true);
-                if (!result) {
+        when (itemMeta) {
+            is LeatherArmorMeta if options.rgb != null -> {
+                val color = parseRGBColor(holder.setPlaceholdersAndArguments(options.rgb))
+                if (color != null) {
+                    itemMeta.setColor(color)
+                } else {
                     plugin.debug(
+                        DebugLevel.HIGHEST,
+                        Level.WARNING,
+                        "Invalid rgb colors found for leather armor: " + options.rgb
+                    )
+                }
+            }
+
+            is FireworkEffectMeta if options.rgb != null -> {
+                val color = parseRGBColor(holder.setPlaceholdersAndArguments(options.rgb))
+                if (color != null) {
+                    itemMeta.effect = FireworkEffect.builder().withColor(color).build()
+                } else {
+                    plugin.debug(
+                        DebugLevel.HIGHEST,
+                        Level.WARNING,
+                        "Invalid RGB color found for firework or firework star: " + options.rgb
+                    )
+                }
+            }
+
+            is EnchantmentStorageMeta if !options.enchantments.isEmpty() -> {
+                for (entry in options.enchantments.entries) {
+                    val result = itemMeta.addStoredEnchant(entry.key, entry.value, true)
+                    if (!result) {
+                        plugin.debug(
                             DebugLevel.HIGHEST,
                             Level.INFO,
-                            "Failed to add enchantment " + entry.getKey().getName() + " to item " + itemStack.getType()
-                    );
+                            "Failed to add enchantment " + entry.key.name + " to item " + itemStack.type
+                        )
+                    }
                 }
             }
-            itemStack.setItemMeta(enchantmentStorageMeta);
-        } else {
-            itemStack.setItemMeta(itemMeta);
+        }
+        itemStack.itemMeta = itemMeta
+
+        if (itemMeta !is EnchantmentStorageMeta && !options.enchantments.isEmpty()) {
+            options.enchantments.forEach { itemMeta.addEnchant(it.key, it.value, true) }
         }
 
-        if (!(itemMeta instanceof EnchantmentStorageMeta) && !this.options.enchantments().isEmpty()) {
-            this.options.enchantments().forEach((enchantment, level) -> itemMeta.addEnchant(enchantment, level, true));
-        }
-
-        if (this.options.lightLevel().isPresent() && itemMeta instanceof BlockDataMeta) {
-            final BlockDataMeta blockDataMeta = (BlockDataMeta) itemMeta;
-            final BlockData blockData = blockDataMeta.getBlockData(itemStack.getType());
-            if (blockData instanceof Light) {
-                final Light light = (Light) blockData;
-                final String parsedLightLevel = holder.setPlaceholdersAndArguments(this.options.lightLevel().get());
+        if (options.lightLevel != null && itemMeta is BlockDataMeta) {
+            val blockData = itemMeta.getBlockData(itemStack.type)
+            if (blockData is Light) {
+                val parsedLightLevel = holder.setPlaceholdersAndArguments(options.lightLevel)
                 try {
-                    final int lightLevel = Math.min(Integer.parseInt(parsedLightLevel), light.getMaximumLevel());
-                    light.setLevel(Math.max(lightLevel, 0));
+                    val lightLevel = min(parsedLightLevel.toInt(), blockData.maximumLevel)
+                    blockData.level = max(lightLevel, 0)
                     if (lightLevel < 0) {
                         plugin.debug(
-                                DebugLevel.MEDIUM,
-                                Level.WARNING,
-                                "Invalid light level found for light block: " + parsedLightLevel + ". Setting to 0."
-                        );
+                            DebugLevel.MEDIUM,
+                            Level.WARNING,
+                            "Invalid light level found for light block: $parsedLightLevel. Setting to 0."
+                        )
                     }
-                    if (lightLevel > light.getMaximumLevel()) {
+                    if (lightLevel > blockData.maximumLevel) {
                         plugin.debug(
-                                DebugLevel.MEDIUM,
-                                Level.WARNING,
-                                "Invalid light level found for light block: " + parsedLightLevel + ". Setting to " + light.getMaximumLevel() + "."
-                        );
+                            DebugLevel.MEDIUM,
+                            Level.WARNING,
+                            "Invalid light level found for light block: " + parsedLightLevel + ". Setting to " + blockData.maximumLevel + "."
+                        )
                     }
 
-                    blockDataMeta.setBlockData(light);
-                } catch (final Exception exception) {
+                    itemMeta.setBlockData(blockData)
+                } catch (exception: Exception) {
                     plugin.printStacktrace(
-                            "Invalid light level found for light block: " + parsedLightLevel,
-                            exception
-                    );
+                        "Invalid light level found for light block: $parsedLightLevel",
+                        exception
+                    )
                 }
             }
         }
 
-        if (!this.options.itemFlags().isEmpty()) {
-            for (final ItemFlag flag : this.options.itemFlags()) {
-                itemMeta.addItemFlags(flag);
+        if (!options.itemFlags.isEmpty()) {
+            for (flag in options.itemFlags) {
+                itemMeta.addItemFlags(flag)
 
                 if (flag == ItemFlag.HIDE_ATTRIBUTES && VersionHelper.HAS_DATA_COMPONENTS) {
-                    itemMeta.setAttributeModifiers(ImmutableMultimap.of());
+                    itemMeta.attributeModifiers = ImmutableMultimap.of()
                 }
             }
         }
 
-        itemStack.setItemMeta(itemMeta);
+        itemStack.itemMeta = itemMeta
 
-        if (NbtProvider.isAvailable()) {
-            if (this.options.nbtString().isPresent()) {
-                final String tag = holder.setPlaceholdersAndArguments(this.options.nbtString().get());
+        if (isAvailable) {
+            if (options.nbtString != null) {
+                val tag = holder.setPlaceholdersAndArguments(options.nbtString)
                 if (tag.contains(":")) {
-                    final String[] parts = tag.split(":", 2);
-                    itemStack = NbtProvider.setString(itemStack, parts[0], parts[1]);
+                    val parts = tag.split(":", limit = 2)
+                    itemStack = NbtProvider.setString(itemStack, parts[0], parts[1])
                 }
             }
 
-            if (this.options.nbtByte().isPresent()) {
-                final String tag = holder.setPlaceholdersAndArguments(this.options.nbtByte().get());
+            if (options.nbtByte != null) {
+                val tag = holder.setPlaceholdersAndArguments(options.nbtByte)
                 if (tag.contains(":")) {
-                    final String[] parts = tag.split(":");
-                    itemStack = NbtProvider.setByte(itemStack, parts[0], Byte.parseByte(parts[1]));
+                    val parts = tag.split(":")
+                    itemStack = NbtProvider.setByte(itemStack, parts[0], parts[1].toByte())
                 }
             }
 
-            if (this.options.nbtShort().isPresent()) {
-                final String tag = holder.setPlaceholdersAndArguments(this.options.nbtShort().get());
+            if (options.nbtShort != null) {
+                val tag = holder.setPlaceholdersAndArguments(options.nbtShort)
                 if (tag.contains(":")) {
-                    final String[] parts = tag.split(":");
-                    itemStack = NbtProvider.setShort(itemStack, parts[0], Short.parseShort(parts[1]));
+                    val parts = tag.split(":".toRegex())
+                    itemStack = NbtProvider.setShort(itemStack, parts[0], parts[1].toShort())
                 }
             }
 
-            if (this.options.nbtInt().isPresent()) {
-                final String tag = holder.setPlaceholdersAndArguments(this.options.nbtInt().get());
+            if (options.nbtInt != null) {
+                val tag = holder.setPlaceholdersAndArguments(options.nbtInt)
                 if (tag.contains(":")) {
-                    final String[] parts = tag.split(":");
-                    itemStack = NbtProvider.setInt(itemStack, parts[0], Integer.parseInt(parts[1]));
+                    val parts = tag.split(":")
+                    itemStack = NbtProvider.setInt(itemStack, parts[0], parts[1].toInt())
                 }
             }
 
-            for (String nbtTag : this.options.nbtStrings()) {
-                final String tag = holder.setPlaceholdersAndArguments(nbtTag);
+            for (nbtTag in options.nbtStrings) {
+                val tag = holder.setPlaceholdersAndArguments(nbtTag)
                 if (tag.contains(":")) {
-                    final String[] parts = tag.split(":", 2);
-                    itemStack = NbtProvider.setString(itemStack, parts[0], parts[1]);
+                    val parts = tag.split(":", limit = 2).toTypedArray()
+                    itemStack = NbtProvider.setString(itemStack, parts[0], parts[1])
                 }
             }
 
-            for (String nbtTag : this.options.nbtBytes()) {
-                final String tag = holder.setPlaceholdersAndArguments(nbtTag);
+            for (nbtTag in options.nbtBytes) {
+                val tag = holder.setPlaceholdersAndArguments(nbtTag)
                 if (tag.contains(":")) {
-                    final String[] parts = tag.split(":");
-                    itemStack = NbtProvider.setByte(itemStack, parts[0], Byte.parseByte(parts[1]));
+                    val parts = tag.split(":")
+                    itemStack = NbtProvider.setByte(itemStack, parts[0], parts[1].toByte())
                 }
             }
 
-            for (String nbtTag : this.options.nbtShorts()) {
-                final String tag = holder.setPlaceholdersAndArguments(nbtTag);
+            for (nbtTag in options.nbtShorts) {
+                val tag = holder.setPlaceholdersAndArguments(nbtTag)
                 if (tag.contains(":")) {
-                    final String[] parts = tag.split(":");
-                    itemStack = NbtProvider.setShort(itemStack, parts[0], Short.parseShort(parts[1]));
+                    val parts = tag.split(":")
+                    itemStack = NbtProvider.setShort(itemStack, parts[0], parts[1].toShort())
                 }
             }
 
-            for (String nbtTag : this.options.nbtInts()) {
-                final String tag = holder.setPlaceholdersAndArguments(nbtTag);
+            for (nbtTag in options.nbtInts) {
+                val tag = holder.setPlaceholdersAndArguments(nbtTag)
                 if (tag.contains(":")) {
-                    final String[] parts = tag.split(":");
-                    itemStack = NbtProvider.setInt(itemStack, parts[0], Integer.parseInt(parts[1]));
+                    val parts = tag.split(":")
+                    itemStack = NbtProvider.setInt(itemStack, parts[0], parts[1].toInt())
                 }
             }
         }
 
-        return itemStack;
+        return itemStack
     }
 
     /**
      * Checks if the string is a head item. The check is case-insensitive.
      * Head items are:
-     * <ul>
-     * <li>"head-{player-name}" (a simple named player head, supports placeholders. eg. "head-%player_name% or head-extendedclip")</li>
-     * <li>"texture-{texture-url}" (a head with a custom texture specified by a texture url. eg. "texture-93a728ad8d31486a7f9aad200edb373ea803d1fc5fd4321b2e2a971348234443")</li>
-     * <li>"basehead-{base64-encoded-texture-url}" (a head with a custom texture specified by a base64 encoded texture url)</li>
-     * <li>"hdb-{hdb-head-id}" (a head with a custom texture specified by a <a href="https://www.spigotmc.org/resources/14280/">HeadDatabase</a> id)</li>
-     * </ul>
+     *
+     *  * "head-{player-name}" (a simple named player head, supports placeholders. eg. "head-%player_name% or head-extendedclip")
+     *  * "texture-{texture-url}" (a head with a custom texture specified by a texture url. eg. "texture-93a728ad8d31486a7f9aad200edb373ea803d1fc5fd4321b2e2a971348234443")
+     *  * "basehead-{base64-encoded-texture-url}" (a head with a custom texture specified by a base64 encoded texture url)
+     *  * "hdb-{hdb-head-id}" (a head with a custom texture specified by a [HeadDatabase](https://www.spigotmc.org/resources/14280/) id)
+     *
      *
      * @param material The string to check
      * @return true if the string is a head item, false otherwise
      */
-    private boolean isHeadItem(@NotNull final String material) {
-        final Optional<HeadType> headType = HeadType.parseHeadType(material);
-        headType.ifPresent(this.options::headType);
-        return headType.isPresent();
+    private fun isHeadItem(material: String): Boolean {
+        val headType = HeadType.parseHeadType(material)
+        if (headType != null) options.headType = headType
+        return headType != null
     }
 
-    private @NotNull Optional<ItemStack> getItemFromHook(String hookName, String... args) {
-        return plugin.getItemHook(hookName).map(itemHook -> itemHook.getItem(args));
+    private fun getItemFromHook(hookName: String?, vararg args: String) = plugin
+        .getItemHook(hookName)
+        ?.getItem(*args)
+
+    fun getMenuItemLore(holder: MenuHolder, lore: List<String>) = lore
+        .map { holder.setPlaceholdersAndArguments(it) }
+        .map { StringUtils.color(it) }
+        .map { it.split("\n") }
+        .flatMap { it }
+        .map { it.split("\\n") }
+        .flatMap { it }
+
+    @Suppress("UnstableApiUsage")
+    private fun parseCustomModelDataComponent(
+        unparsedComponent: com.extendedclip.deluxemenus.menu.options.CustomModelDataComponent,
+        component: CustomModelDataComponent,
+        holder: MenuHolder
+    ): CustomModelDataComponent {
+        if (!unparsedComponent.colors.isEmpty()) {
+            component.colors = unparsedComponent.colors
+                .map { holder.setPlaceholdersAndArguments(it) }
+                .mapNotNull { parseRGBColor(it) }
+        }
+
+        if (!unparsedComponent.flags.isEmpty()) {
+            component.flags = unparsedComponent.flags.map { holder.setPlaceholdersAndArguments(it).toBoolean() }
+        }
+
+        if (!unparsedComponent.floats.isEmpty()) {
+            component.floats = unparsedComponent.floats.mapNotNull { holder.setPlaceholdersAndArguments(it).toFloatOrNull() }
+        }
+
+        if (!unparsedComponent.strings.isEmpty()) {
+            component.strings = unparsedComponent.strings.map { holder.setPlaceholdersAndArguments(it) }
+        }
+
+        return component
     }
 
-    protected List<String> getMenuItemLore(@NotNull final MenuHolder holder, @NotNull final List<String> lore) {
-        return lore.stream()
-                .map(holder::setPlaceholdersAndArguments)
-                .map(StringUtils::color)
-                .map(line -> line.split("\n"))
-                .flatMap(Arrays::stream)
-                .map(line -> line.split("\\\\n"))
-                .flatMap(Arrays::stream)
-                .collect(Collectors.toList());
-    }
-
-    private @NotNull org.bukkit.inventory.meta.components.CustomModelDataComponent parseCustomModelDataComponent(
-            @NotNull final CustomModelDataComponent unparsedComponent,
-            @NotNull final org.bukkit.inventory.meta.components.CustomModelDataComponent component,
-            @NotNull final MenuHolder holder
-    ) {
-        if (!unparsedComponent.colors().isEmpty()) {
-            final List<Color> colors = unparsedComponent.colors()
-                    .stream()
-                    .map(holder::setPlaceholdersAndArguments)
-                    .map(this::parseRGBColor)
-                    .filter(Objects::nonNull)
-                    .collect(Collectors.toList());
-            component.setColors(colors);
-        }
-
-        if (!unparsedComponent.flags().isEmpty()) {
-            final List<Boolean> flags = unparsedComponent.flags()
-                    .stream()
-                    .map(holder::setPlaceholdersAndArguments)
-                    .map(Boolean::parseBoolean)
-                    .collect(Collectors.toList());
-            component.setFlags(flags);
-        }
-
-        if (!unparsedComponent.floats().isEmpty()) {
-            final List<Float> floats = unparsedComponent.floats()
-                    .stream()
-                    .map(holder::setPlaceholdersAndArguments)
-                    .map(Float::parseFloat)
-                    .collect(Collectors.toList());
-            component.setFloats(floats);
-        }
-
-        if (!unparsedComponent.strings().isEmpty()) {
-            final List<String> strings = unparsedComponent.strings()
-                    .stream()
-                    .map(holder::setPlaceholdersAndArguments)
-                    .collect(Collectors.toList());
-            component.setStrings(strings);
-        }
-
-        return component;
-    }
-
-    private @Nullable Color parseRGBColor(@NotNull final String input) {
-        final Color color = StringUtils.parseRGBColor(input);
+    private fun parseRGBColor(input: String): Color? {
+        val color = StringUtils.parseRGBColor(input)
         if (color == null) {
             plugin.debug(
-                    DebugLevel.HIGHEST,
-                    Level.WARNING,
-                    "Invalid RGB color found: " + input
-            );
+                DebugLevel.HIGHEST,
+                Level.WARNING,
+                "Invalid RGB color found: $input"
+            )
         }
-        return color;
+        return color
     }
 
-    public @NotNull MenuItemOptions options() {
-        return options;
+    companion object {
+        fun base64ToItemStack(data: String): ItemStack? {
+            try {
+                val bytes = Base64.getDecoder().decode(data)
+                val inputStream = ByteArrayInputStream(bytes)
+                val dataInput = BukkitObjectInputStream(inputStream)
+                dataInput.close()
+                val obj = dataInput.readObject()
+                if (obj is ItemStack) return obj
+            } catch (_: Exception) { }
+            return null
+        }
     }
 }

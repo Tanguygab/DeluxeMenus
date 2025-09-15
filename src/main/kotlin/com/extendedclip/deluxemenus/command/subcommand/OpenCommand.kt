@@ -1,235 +1,190 @@
-package com.extendedclip.deluxemenus.command.subcommand;
+package com.extendedclip.deluxemenus.command.subcommand
 
-import com.extendedclip.deluxemenus.DeluxeMenus;
-import com.extendedclip.deluxemenus.menu.Menu;
-import com.extendedclip.deluxemenus.utils.Messages;
-import org.bukkit.Bukkit;
-import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import com.extendedclip.deluxemenus.DeluxeMenus
+import com.extendedclip.deluxemenus.menu.Menu
+import com.extendedclip.deluxemenus.utils.Messages
+import org.bukkit.Bukkit
+import org.bukkit.command.CommandSender
+import org.bukkit.entity.Player
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
+class OpenCommand(plugin: DeluxeMenus) : SubCommand(plugin, "open") {
 
-public class OpenCommand extends SubCommand {
-
-    private static final String OPEN_COMMAND = "deluxemenus.open";
-
-    public OpenCommand(final @NotNull DeluxeMenus plugin) {
-        super(plugin);
-    }
-
-    @Override
-    public @NotNull String getName() {
-        return "open";
-    }
-
-    @Override
-    public void execute(final @NotNull CommandSender sender, final @NotNull List<String> arguments) {
+    override fun execute(sender: CommandSender, arguments: List<String>) {
         if (!sender.hasPermission(OPEN_COMMAND)) {
-            plugin.sms(sender, Messages.NO_PERMISSION);
-            return;
+            plugin.sms(sender, Messages.NO_PERMISSION)
+            return
         }
 
-        boolean player = (sender instanceof Player);
+        val player = sender is Player
 
         if (arguments.isEmpty()) {
-            plugin.sms(sender, Messages.WRONG_USAGE_OPEN_COMMAND);
-            return;
+            plugin.sms(sender, Messages.WRONG_USAGE_OPEN_COMMAND)
+            return
         }
 
         if (Menu.getAllMenus().isEmpty()) {
-            plugin.sms(sender, Messages.MENUS_LOADED.message().replaceText(AMOUNT_REPLACER_BUILDER.replacement("There are no").build()));
-            return;
+            plugin.sms(
+                sender,
+                Messages.MENUS_LOADED.message.replaceText(AMOUNT_REPLACER_BUILDER.replacement("There are no").build())
+            )
+            return
         }
 
-        Player viewer;
-        String placeholderPlayer = null;
+        val viewer: Player?
+        var placeholderPlayer: String? = null
 
-        if (arguments.size() == 2 && arguments.get(1).startsWith("-p:")) {
+        if (arguments.size == 2 && arguments[1].startsWith("-p:")) {
             if (!sender.hasPermission("deluxemenus.placeholdersfor")) {
-                plugin.sms(sender, Messages.NO_PERMISSION_PLAYER_ARGUMENT);
-                return;
+                plugin.sms(sender, Messages.NO_PERMISSION_PLAYER_ARGUMENT)
+                return
             }
 
-            placeholderPlayer = arguments.get(1).replace("-p:", "");
-
-        } else if (arguments.size() >= 3 && arguments.get(2).startsWith("-p:")) {
+            placeholderPlayer = arguments[1].replace("-p:", "")
+        } else if (arguments.size >= 3 && arguments[2].startsWith("-p:")) {
             if (!sender.hasPermission("deluxemenus.placeholdersfor")) {
-                plugin.sms(sender, Messages.NO_PERMISSION_PLAYER_ARGUMENT);
-                return;
+                plugin.sms(sender, Messages.NO_PERMISSION_PLAYER_ARGUMENT)
+                return
             }
 
-            placeholderPlayer = arguments.get(2).replace("-p:", "");
+            placeholderPlayer = arguments[2].replace("-p:", "")
         }
 
-        if (arguments.size() >= 2) {
+        if (arguments.size >= 2) {
             if (placeholderPlayer == null) {
                 if (player && !sender.hasPermission("deluxemenus.open.others")) {
-                    plugin.sms(sender, Messages.NO_PERMISSION);
-                    return;
+                    plugin.sms(sender, Messages.NO_PERMISSION)
+                    return
                 }
 
-                viewer = Bukkit.getPlayerExact(arguments.get(1));
-
+                viewer = Bukkit.getPlayerExact(arguments[1])
             } else {
-                if (arguments.size() >= 3) {
+                if (arguments.size >= 3) {
                     if (!sender.hasPermission("deluxemenus.open.others")) {
-                        plugin.sms(sender, Messages.NO_PERMISSION);
-                        return;
+                        plugin.sms(sender, Messages.NO_PERMISSION)
+                        return
                     }
 
-                    viewer = Bukkit.getPlayerExact(arguments.get(1));
-
+                    viewer = Bukkit.getPlayerExact(arguments[1])
                 } else {
                     if (!player) {
-                        plugin.sms(sender, Messages.MUST_SPECIFY_PLAYER);
-                        return;
+                        plugin.sms(sender, Messages.MUST_SPECIFY_PLAYER)
+                        return
                     }
 
-                    viewer = (Player) sender;
+                    viewer = sender
                 }
             }
-
         } else {
             if (!player) {
-                plugin.sms(sender, Messages.MUST_SPECIFY_PLAYER);
-                return;
+                plugin.sms(sender, Messages.MUST_SPECIFY_PLAYER)
+                return
             }
 
-            viewer = (Player) sender;
+            viewer = sender
         }
 
         if (viewer == null) {
-            plugin.sms(sender, Messages.PLAYER_IS_NOT_ONLINE.message().replaceText(PLAYER_REPLACER_BUILDER.replacement(arguments.get(1)).build()));
-            return;
+            plugin.sms(
+                sender,
+                Messages.PLAYER_IS_NOT_ONLINE.message
+                    .replaceText(PLAYER_REPLACER_BUILDER.replacement(arguments[1]).build())
+            )
+            return
         }
 
-        Player placeholder = null;
+        var placeholder: Player? = null
 
         if (placeholderPlayer != null) {
-            placeholder = Bukkit.getPlayerExact(placeholderPlayer);
+            placeholder = Bukkit.getPlayerExact(placeholderPlayer)
 
             if (placeholder == null) {
-                plugin.sms(sender, Messages.PLAYER_IS_NOT_ONLINE.message().replaceText(PLAYER_REPLACER_BUILDER.replacement(placeholderPlayer).build()));
-                return;
-
+                plugin.sms(
+                    sender,
+                    Messages.PLAYER_IS_NOT_ONLINE.message
+                        .replaceText(PLAYER_REPLACER_BUILDER.replacement(placeholderPlayer).build())
+                )
+                return
             } else {
                 if (placeholder.hasPermission("deluxemenus.placeholdersfor.exempt")) {
-                    plugin.sms(sender, Messages.PLAYER_IS_EXEMPT.message().replaceText(PLAYER_REPLACER_BUILDER.replacement(placeholderPlayer).build()));
+                    plugin.sms(
+                        sender,
+                        Messages.PLAYER_IS_EXEMPT.message
+                            .replaceText(PLAYER_REPLACER_BUILDER.replacement(placeholderPlayer).build())
+                    )
 
-                    return;
+                    return
                 }
             }
         }
 
-        Optional<Menu> menu = Menu.getMenuByName(arguments.get(0));
+        val menu = Menu.getMenuByName(arguments[0])
 
-        if (menu.isEmpty()) {
-            plugin.sms(sender, Messages.INVALID_MENU.message().replaceText(MENU_REPLACER_BUILDER.replacement(arguments.get(0)).build()));
-            return;
+        if (menu == null) {
+            plugin.sms(
+                sender,
+                Messages.INVALID_MENU.message
+                    .replaceText(MENU_REPLACER_BUILDER.replacement(arguments[0]).build())
+            )
+            return
         }
 
-        menu.get().openMenu(viewer, null, placeholder);
+        menu.openMenu(viewer, null, placeholder)
     }
 
-    @Override
-    public @Nullable List<String> onTabComplete(final @NotNull CommandSender sender, final @NotNull List<String> arguments) {
-        if (!sender.hasPermission(OPEN_COMMAND)) {
-            return null;
+    override fun onTabComplete(sender: CommandSender, arguments: List<String>): List<String>? {
+        if (!sender.hasPermission(OPEN_COMMAND)) return null
+        if (arguments.isEmpty()) return listOf(name)
+        if (arguments.size > 4) return null
+
+        if (arguments.size == 1) {
+            if (arguments[0].isEmpty()) return listOf(name)
+
+            if (name.startsWith(arguments[0], ignoreCase = true)) return listOf(name)
+
+            return null
         }
 
-        if (arguments.isEmpty()) {
-            return List.of(getName());
+        if (name != arguments[0]) return null
+
+        val menuNames = Menu.getAllMenuNames()
+        if (menuNames.isEmpty()) return null
+
+        if (arguments.size == 2) {
+            if (arguments[1].isEmpty()) return menuNames.toList()
+
+            return menuNames.filter { it.startsWith(arguments[1], ignoreCase = true) }
         }
 
-        if (arguments.size() > 4) {
-            return null;
-        }
+        val onlinePlayerNames = plugin.server.onlinePlayers.map { it.name }.toMutableList()
 
-        if (arguments.size() == 1) {
-            if (arguments.get(0).isEmpty()) {
-                return List.of(getName());
-            }
-
-            final String firstArgument = arguments.get(0).toLowerCase();
-
-            if (getName().startsWith(firstArgument)) {
-                return List.of(getName());
-            }
-
-            return null;
-        }
-
-        final String firstArgument = arguments.get(0).toLowerCase();
-
-        if (!getName().equals(firstArgument)) {
-            return null;
-        }
-
-        final Collection<String> menuNames = Menu.getAllMenuNames();
-
-        if (menuNames.isEmpty()) {
-            return null;
-        }
-
-        if (arguments.size() == 2) {
-            final String secondArgument = arguments.get(1).toLowerCase();
-
-            if (secondArgument.isEmpty()) {
-                return List.copyOf(menuNames);
-            }
-
-            return menuNames.stream()
-                    .filter(menuName -> menuName.toLowerCase().startsWith(secondArgument))
-                    .collect(Collectors.toList());
-        }
-
-        final List<String> onlinePlayerNames = Bukkit.getOnlinePlayers()
-                .stream()
-                .map(Player::getName)
-                .collect(Collectors.toList());
-
-        if (arguments.size() == 3) {
-            final String thirdArgument = arguments.get(2).toLowerCase();
+        if (arguments.size == 3) {
+            val thirdArgument = arguments[2]
 
             if (thirdArgument.isEmpty()) {
-                return Stream.concat(onlinePlayerNames.stream(), Stream.of("-p:")).collect(Collectors.toList());
+                onlinePlayerNames.add("-p:")
+                return onlinePlayerNames
             }
 
             if (!thirdArgument.startsWith("-")) {
-                return onlinePlayerNames.stream()
-                        .filter(playerName -> playerName.toLowerCase().startsWith(thirdArgument))
-                        .collect(Collectors.toList());
+                return onlinePlayerNames.filter { it.startsWith(thirdArgument, ignoreCase = true) }
             }
 
-            return onlinePlayerNames.stream()
-                    .map(playerName -> "-p:" + playerName)
-                    .filter(playerName -> playerName.toLowerCase().startsWith(thirdArgument))
-                    .collect(Collectors.toList());
+            return onlinePlayerNames.map { "-p:$it" }.filter { it.startsWith(thirdArgument, ignoreCase = true) }
         }
 
-        if (arguments.size() == 4) {
-            final String thirdArgument = arguments.get(2).toLowerCase();
-            final String fourthArgument = arguments.get(3).toLowerCase();
+        if (arguments.size == 4) {
+            if (!arguments[2].startsWith("-p:", ignoreCase = true)) return null
 
-            if (!thirdArgument.startsWith("-p:")) {
-                return null;
-            }
+            val fourthArgument = arguments[3]
+            if (fourthArgument.isEmpty()) return onlinePlayerNames
 
-            if (fourthArgument.isEmpty()) {
-                return onlinePlayerNames;
-            }
-
-            return onlinePlayerNames.stream()
-                    .filter(playerName -> playerName.toLowerCase().startsWith(fourthArgument))
-                    .collect(Collectors.toList());
+            return onlinePlayerNames.filter { it.startsWith(fourthArgument, ignoreCase = true) }
         }
 
-        return null;
+        return null
+    }
+
+    companion object {
+        private const val OPEN_COMMAND = "deluxemenus.open"
     }
 }

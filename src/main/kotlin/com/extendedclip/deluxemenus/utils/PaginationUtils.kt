@@ -1,13 +1,8 @@
-package com.extendedclip.deluxemenus.utils;
+package com.extendedclip.deluxemenus.utils
 
-import com.google.common.primitives.Ints;
-import org.jetbrains.annotations.Nullable;
+import kotlin.math.ceil
 
-public class PaginationUtils {
-    private PaginationUtils() {
-        throw new AssertionError("Util classes should not be initialized");
-    }
-
+object PaginationUtils {
     /**
      * Loose parsing of a page number. If the provided argument is not a number or is less than 1, 1 is returned.
      * If the provided page number is greater than the maximum number of pages, the maximum number of pages is returned.
@@ -17,28 +12,18 @@ public class PaginationUtils {
      * @param argument The argument to parse as a page number
      * @return The parsed page number
      */
-    public static int parsePage(final int itemsPerPage, final int itemsCount, @Nullable final Integer pages,
-                                @Nullable final String argument) {
-        if (itemsCount <= itemsPerPage || argument == null) {
-            return 1;
-        }
+    fun parsePage(
+        itemsPerPage: Int, itemsCount: Int, pages: Int?,
+        argument: String?
+    ): Int {
+        if (itemsCount <= itemsPerPage || argument == null) return 1
 
-        final Integer page = Ints.tryParse(argument);
+        val page = argument.toIntOrNull()
+        if (page == null || page < 1) return 1
 
-        if (page == null || page < 1) {
-            return 1;
-        }
-
-        final int maxPages = pages != null ? pages : getPagesCount(itemsPerPage, itemsCount);
-
-        if (page > maxPages) {
-            return maxPages;
-        }
-
-        return page;
+        val maxPages = pages ?: getPagesCount(itemsPerPage, itemsCount)
+        return if (page > maxPages) maxPages else page
     }
 
-    public static int getPagesCount(final int itemsPerPage, final int itemsCount) {
-        return (int) Math.ceil((double) itemsCount / itemsPerPage);
-    }
+    fun getPagesCount(itemsPerPage: Int, itemsCount: Int) = ceil(itemsCount.toDouble() / itemsPerPage).toInt()
 }

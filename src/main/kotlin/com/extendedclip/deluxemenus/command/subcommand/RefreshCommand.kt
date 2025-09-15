@@ -1,116 +1,85 @@
-package com.extendedclip.deluxemenus.command.subcommand;
+package com.extendedclip.deluxemenus.command.subcommand
 
-import com.extendedclip.deluxemenus.DeluxeMenus;
-import com.extendedclip.deluxemenus.menu.Menu;
-import com.extendedclip.deluxemenus.utils.Messages;
-import org.bukkit.command.CommandSender;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import com.extendedclip.deluxemenus.DeluxeMenus
+import com.extendedclip.deluxemenus.menu.Menu
+import com.extendedclip.deluxemenus.utils.Messages
+import org.bukkit.command.CommandSender
 
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
+class RefreshCommand(plugin: DeluxeMenus) : SubCommand(plugin, "refresh") {
 
-public class RefreshCommand extends SubCommand {
-
-    private static final String REFRESH_COMMAND = "deluxemenus.refresh";
-
-    public RefreshCommand(final @NotNull DeluxeMenus plugin) {
-        super(plugin);
-    }
-
-    @Override
-    public @NotNull String getName() {
-        return "refresh";
-    }
-
-    @Override
-    public void execute(final @NotNull CommandSender sender, final @NotNull List<String> arguments) {
+    override fun execute(sender: CommandSender, arguments: List<String>) {
         if (!sender.hasPermission(REFRESH_COMMAND)) {
-            plugin.sms(sender, Messages.NO_PERMISSION);
-            return;
+            plugin.sms(sender, Messages.NO_PERMISSION)
+            return
         }
 
         if (arguments.isEmpty()) {
-            plugin.sms(sender, Messages.WRONG_USAGE_REFRESH_COMMAND);
-            return;
+            plugin.sms(sender, Messages.WRONG_USAGE_REFRESH_COMMAND)
+            return
         }
 
         if (Menu.getAllMenus().isEmpty()) {
-            plugin.sms(sender, Messages.MENUS_LOADED.message().replaceText(AMOUNT_REPLACER_BUILDER.replacement("There are no").build()));
-            return;
+            plugin.sms(
+                sender,
+                Messages.MENUS_LOADED.message.replaceText(AMOUNT_REPLACER_BUILDER.replacement("There are no").build())
+            )
+            return
         }
 
-        Optional<Menu> menu = Menu.getMenuByName(arguments.get(0));
+        val menu: Menu? = Menu.getMenuByName(arguments[0])
 
-        if (menu.isEmpty()) {
-            plugin.sms(sender, Messages.INVALID_MENU.message().replaceText(MENU_REPLACER_BUILDER.replacement(arguments.get(0)).build()));
-            return;
+        if (menu == null) {
+            plugin.sms(
+                sender,
+                Messages.INVALID_MENU.message
+                    .replaceText(MENU_REPLACER_BUILDER.replacement(arguments[0]).build())
+            )
+            return
         }
 
-        menu.get().refreshForAll();
+        menu.refreshForAll()
 
-        if(arguments.size() < 2 || !arguments.get(1).equalsIgnoreCase("-s")) {
-            plugin.sms(sender, Messages.MENU_REFRESHED.message()
-                    .replaceText(MENU_REPLACER_BUILDER.replacement(menu.get().options().name()).build())
-                    .replaceText(AMOUNT_REPLACER_BUILDER.replacement(String.valueOf(menu.get().activeViewers())).build())
-            );
+        if (arguments.size < 2 || !arguments[1].equals("-s", ignoreCase = true)) {
+            plugin.sms(
+                sender, Messages.MENU_REFRESHED.message
+                    .replaceText(MENU_REPLACER_BUILDER.replacement(menu.options.name).build())
+                    .replaceText(
+                        AMOUNT_REPLACER_BUILDER.replacement(java.lang.String.valueOf(menu.getActiveViewers())).build()
+                    )
+            )
         }
     }
 
-    @Override
-    public @Nullable List<String> onTabComplete(final @NotNull CommandSender sender, final @NotNull List<String> arguments) {
-        if (!sender.hasPermission(REFRESH_COMMAND)) {
-            return null;
+    override fun onTabComplete(sender: CommandSender, arguments: List<String>): List<String>? {
+        if (!sender.hasPermission(REFRESH_COMMAND)) return null
+        if (arguments.isEmpty()) return listOf(name)
+        if (arguments.size > 4) return null
+
+        if (arguments.size == 1) {
+            if (arguments[0].isEmpty()) return listOf(name)
+
+            if (name.startsWith(arguments[0], ignoreCase = true)) return listOf(name)
+
+            return null
         }
 
-        if (arguments.isEmpty()) {
-            return List.of(getName());
+        val firstArgument = arguments[0].lowercase()
+        if (name != firstArgument) return null
+
+        val menuNames = Menu.getAllMenuNames()
+        if (menuNames.isEmpty()) return null
+
+        if (arguments.size == 2) {
+            val secondArgument = arguments[1].lowercase()
+            if (secondArgument.isEmpty()) return menuNames.toList()
+
+            return menuNames.filter { it.startsWith(secondArgument) }
         }
 
-        if (arguments.size() > 4) {
-            return null;
-        }
+        return null
+    }
 
-        if (arguments.size() == 1) {
-            if (arguments.get(0).isEmpty()) {
-                return List.of(getName());
-            }
-
-            final String firstArgument = arguments.get(0).toLowerCase();
-
-            if (getName().startsWith(firstArgument)) {
-                return List.of(getName());
-            }
-
-            return null;
-        }
-
-        final String firstArgument = arguments.get(0).toLowerCase();
-
-        if (!getName().equals(firstArgument)) {
-            return null;
-        }
-
-        final Collection<String> menuNames = Menu.getAllMenuNames();
-
-        if (menuNames.isEmpty()) {
-            return null;
-        }
-
-        if (arguments.size() == 2) {
-            final String secondArgument = arguments.get(1).toLowerCase();
-
-            if (secondArgument.isEmpty()) {
-                return List.copyOf(menuNames);
-            }
-
-            return menuNames.stream()
-                    .filter(menuName -> menuName.toLowerCase().startsWith(secondArgument))
-                    .collect(Collectors.toList());
-        }
-
-        return null;
+    companion object {
+        private const val REFRESH_COMMAND = "deluxemenus.refresh"
     }
 }
