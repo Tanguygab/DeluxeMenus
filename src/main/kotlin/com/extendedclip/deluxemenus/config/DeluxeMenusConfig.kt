@@ -39,7 +39,6 @@ import java.io.IOException
 import java.io.OutputStream
 import java.util.TreeMap
 import java.util.logging.Level
-import java.util.regex.Matcher
 
 class DeluxeMenusConfig(private val plugin: DeluxeMenus) {
     private val separator = File.separator
@@ -761,7 +760,7 @@ class DeluxeMenusConfig(private val plugin: DeluxeMenus) {
                 trimPattern = c.getString(currentPath + "trim_pattern", null),
 
                 bannerMeta = bannerMeta,
-                baseColor = DyeColor.valueOf(c.getString(currentPath + "base_color")?.uppercase()!!),
+                baseColor = c.getString(currentPath + "base_color")?.uppercase()?.let { DyeColor.valueOf(it) },
 
                 potionEffects = potionEffects,
                 rgb = c.getString(currentPath + "rgb", null),
@@ -902,11 +901,9 @@ class DeluxeMenusConfig(private val plugin: DeluxeMenus) {
                         checkOffHand = c.getBoolean("$rPath.offhand")
 
                         // TODO: Remove support for the old options in v1.14.0
-                        if (c.contains("$rPath.model_data") && c.isInt("$rPath.model_data")) {
-                            customData = c.getInt("$rPath.model_data")
-                        } else {
-                            customData = c.getInt("$rPath.modeldata", 0)
-                        }
+                        customData = if (c.contains("$rPath.model_data") && c.isInt("$rPath.model_data"))
+                            c.getInt("$rPath.model_data")
+                        else c.getInt("$rPath.modeldata", 0)
                     }
 
 
