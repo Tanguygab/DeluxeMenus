@@ -1185,10 +1185,12 @@ class DeluxeMenusConfig(private val plugin: DeluxeMenus) {
 
         for (command in commands) {
             if (command.isNullOrEmpty()) continue
-            var command = command.trim()
+            var command = command
 
             val type = ActionType.getByStart(command) ?: continue
             command = command.replaceFirst(type.identifier, "")
+
+            command = command.trim()
 
             val action = ClickAction(type, command)
 

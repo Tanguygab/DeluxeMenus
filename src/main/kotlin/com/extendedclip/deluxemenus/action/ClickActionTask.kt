@@ -324,11 +324,7 @@ class ClickActionTask(
                 if (!executable.contains(" ")) {
                     try {
                         sound = SoundUtils.getSound(executable.uppercase())
-                    } catch (exception: IllegalArgumentException) {
-                        plugin.printStacktrace(
-                            "Sound name given for sound action: $executable, is not a valid sound!",
                             exception
-                        )
                         return
                     }
                 } else {
@@ -336,11 +332,8 @@ class ClickActionTask(
 
                     try {
                         sound = SoundUtils.getSound(parts[0].uppercase())
-                    } catch (exception: IllegalArgumentException) {
-                        plugin.printStacktrace(
-                            "Sound name given for sound action: " + parts[0] + ", is not a valid sound!",
-                            exception
-                        )
+                    } catch (e: Exception) {
+                        plugin.printStacktrace("Sound name given for sound action: " + parts[0] + ", is not a valid sound!", e)
                         return
                     }
 
