@@ -17,7 +17,7 @@ class ClickActionTask(
     private val actionType: ActionType,
     private val exec: String,
 // Ugly hack to get around the fact that arguments are not available at task execution time
-    private val arguments: MutableMap<String, String>,
+    private val arguments: MutableMap<String, String>?,
     private val parsePlaceholdersInArguments: Boolean,
     private val parsePlaceholdersAfterArguments: Boolean
 ) : BukkitRunnable() {
@@ -28,11 +28,11 @@ class ClickActionTask(
         val target = holder?.placeholderPlayer ?: player
 
         val executable = StringUtils.replacePlaceholdersAndArguments(
-            this.exec,
-            this.arguments,
+            exec,
+            arguments,
             target,
-            this.parsePlaceholdersInArguments,
-            this.parsePlaceholdersAfterArguments
+            parsePlaceholdersInArguments,
+            parsePlaceholdersAfterArguments
         )
 
         when (actionType) {

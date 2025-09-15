@@ -1221,7 +1221,7 @@ class DeluxeMenusConfig(private val plugin: DeluxeMenus) {
                             holder.viewer.uniqueId,
                             action.type,
                             action.executable,
-                            holder.typedArgs!!,
+                            holder.typedArgs,
                             holder.parsePlaceholdersInArguments,
                             holder.parsePlaceholdersAfterArguments
                         )
