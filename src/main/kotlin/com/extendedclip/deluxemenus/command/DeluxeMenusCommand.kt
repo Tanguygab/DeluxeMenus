@@ -50,7 +50,7 @@ class DeluxeMenusCommand(private val plugin: DeluxeMenus) : TabExecutor {
         val subCommand = subCommands[arguments[0].lowercase()]
 
         if (subCommand != null) {
-            subCommand.execute(sender, arguments.slice(IntRange(1, arguments.size)))
+            subCommand.execute(sender, arguments.slice(IntRange(1, arguments.size - 1)))
             return true
         }
 

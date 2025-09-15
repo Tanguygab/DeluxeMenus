@@ -48,7 +48,7 @@ class RegistrableMenuCommand(
             var index = 0
             for (arg in menu.options.arguments) {
                 if (index + 1 == menu.options.arguments.size) {
-                    val last = typedArgs.slice(IntRange(index, typedArgs.size)).joinToString(" ")
+                    val last = typedArgs.slice(IntRange(index, typedArgs.size - 1)).joinToString(" ")
                     plugin.debug(DebugLevel.LOWEST, Level.INFO, "arg: $arg => $last")
                     argMap[arg] = last
                 } else {
