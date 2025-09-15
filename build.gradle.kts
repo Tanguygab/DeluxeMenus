@@ -1,5 +1,3 @@
-import org.gradle.kotlin.dsl.support.kotlinCompilerOptions
-
 plugins {
     kotlin("jvm") version "2.2.20-RC2"
     id("com.gradleup.shadow") version("8.3.5")
